@@ -1,6 +1,4 @@
 import numpy as np
-import random
-
 
 def sigmoid(x):
     """
@@ -27,4 +25,5 @@ def dev_sym_sigmoid(x):
     """
     a = 1.7159
     s = 2/3
-    return 4*a*s*np.exp(2*s*x) / (1 + np.exp(2*s*x)) ** 2
+    exponential = np.exp(2*s*x)
+    return 4*a*s*exponential / (1 + exponential) ** 2
