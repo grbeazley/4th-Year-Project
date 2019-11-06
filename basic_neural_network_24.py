@@ -11,43 +11,32 @@ path = "Data Sets\\GBP-USD Hourly.csv"
 
 
 class NeuralNet:
-    def __init__(self, path_to_data, learning_rate=0.001):
-        self.mid_weights = (np.random.rand(12, 32) - 0.5) * (4.8 / 12)
-        self.out_weights = (np.random.rand(32) - 0.5) * (4.8 / 32)
-        self.mid_bias = np.zeros(32)
+    def __init__(self, path_to_data, learning_rate=0.0005):
+        self.mid_weights = (np.random.rand(24, 64) - 0.5) * (4.8 / 24)
+        self.out_weights = (np.random.rand(64) - 0.5) * (4.8 / 64)
+        self.mid_bias = np.zeros(64)
         self.alpha = learning_rate
         self.path = path_to_data
-
         self.data_from_file = None
-        self.norm_data = None
 
         self.data, self.true = self.import_data()
         self.training_data, self.training_true, self.test_data, self.test_true = self.split_data(split=0.8)
 
     def import_data(self):
         # Create a 2D numpy array of date and hourly value
-        self.data_from_file = pd.read_csv(self.path).values[:, 1]
-
-        # Normalise input data
-        # self.data_from_file = self.normalise_data(self.data_from_file)
+        self.data_from_file = pd.read_csv(self.path).values
 
         # Get true value as every 4th entry, starting from 12
-        ground_truth = self.data_from_file[12:]
+        ground_truth = self.data_from_file[24:, 1]
 
         # Initialise empty vector
-        all_data = np.zeros([len(ground_truth), 12])
+        all_data = np.zeros([len(ground_truth), 24])
 
         # Create n 1x12 vectors and store them in a matrix
         for idx in range(len(ground_truth)):
-            all_data[idx, :] = self.data_from_file[idx:idx + 12]
+            all_data[idx, :] = self.data_from_file[idx:idx + 24, 1]
 
         return all_data, ground_truth
-
-    def normalise_data(self, data):
-        # Subtracts mean and scales data
-        norm_data = (data - np.mean(data))/np.var(data)
-
-        return norm_data
 
     def split_data(self, split=0.8):
         # Have to take into account time series nature
@@ -123,16 +112,6 @@ class NeuralNet:
 
         return prdct_values
 
-    def predict_sngle(self, sample='all'):
-        prdct_values = []
-        if sample == 'all':
-            for data_row in self.data:
-                prdct_values.append(self.forward(data_row))
-        else:
-            print(sample, 'has not been implemented yet')
-
-        return prdct_values
-
     def plot_predict_multi(self, steps=0):
         # Plots a comparison between predicted and true movement
         prdct_values = self.predict_multi(steps)
@@ -140,13 +119,8 @@ class NeuralNet:
         plt.plot(prdct_values)
         plt.legend(['True Values', 'Predicted Values'])
 
-    def plot_predict_sngle(self):
-        prdct_values = self.predict_sngle('all')
-        plt.plot(self.true)
-        plt.plot(prdct_values)
-        plt.legend(['True Values', 'Predicted Values'])
-
 
 network = NeuralNet(path)
 
-network.train_network(epochs=100)
+network.train_network(epochs=5000)
+
