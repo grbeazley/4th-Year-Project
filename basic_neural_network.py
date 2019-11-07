@@ -11,12 +11,15 @@ path = "Data Sets\\GBP-USD Hourly.csv"
 
 
 class NeuralNet:
-    def __init__(self, path_to_data, learning_rate=0.001):
-        self.mid_weights = (np.random.rand(12, 32) - 0.5) * (4.8 / 12)
-        self.out_weights = (np.random.rand(32) - 0.5) * (4.8 / 32)
+    def __init__(self, path_to_data, learning_rate=0.05, do_sub_sample=True):
+        self.mid_weights = (np.random.rand(12, 32) - 0.5) * (4.8 / 120)
+        self.out_weights = (np.random.rand(32) - 0.5) * (4.8 / 320)
         self.mid_bias = np.zeros(32)
+        self.out_bias = np.random.rand(1) * 2
+
         self.alpha = learning_rate
         self.path = path_to_data
+        self.do_sub_sample = do_sub_sample
 
         self.data_from_file = None
         self.norm_data = None
@@ -49,10 +52,27 @@ class NeuralNet:
 
         return norm_data
 
+    def subsample_data(self, data, true):
+        # Sub Sample data for training
+        data_sub = data[::4]
+        true_sub = true[::4]
+
+        return data_sub, true_sub
+
     def split_data(self, split=0.8):
-        # Have to take into account time series nature
-        split_idx = round(len(self.true) * split)
-        return self.data[:split_idx], self.true[:split_idx], self.data[split_idx:], self.true[split_idx:]
+        # Perform sub sampling if requested
+        if self.do_sub_sample:
+            data, true = self.subsample_data(self.data, self.true)
+        else:
+            # Otherwise use full data sets
+            data, true = self.data, self.true
+
+        # Have to take into account time series nature but can shuffle training data
+        split_idx = round(len(true) * split)
+        train_data, test_data = data[:split_idx], data[split_idx:]
+        train_true, test_true = true[:split_idx], true[split_idx:]
+        shfl_idx = np.random.permutation(len(train_true))
+        return train_data[shfl_idx], train_true[shfl_idx], test_data, test_true
 
     def forward(self, data_row):
         # Calculate the vector of outputs from the hidden layer
@@ -97,6 +117,10 @@ class NeuralNet:
                 out_weights_grad = update * - error
                 self.out_weights -= self.alpha * out_weights_grad
 
+                # Update the final layer bias using gradient descent
+                out_bias_grad = - error
+                self.out_bias -= self.alpha * out_bias_grad
+
                 # Update the hidden layer weights & bias using gradient descent
                 sig_dev = dev_sym_sigmoid(update)
                 weights_grad = -error * np.outer(data_row, (self.out_weights * sig_dev))
@@ -109,17 +133,17 @@ class NeuralNet:
                 # Only calculate error every 50th epoch
                 print(self.calc_error(calc_on='training'))
 
-    def predict_multi(self, steps=0):
+    def predict_multi(self, steps=-1, start=0):
+        # Predicts multiple steps forward
+        
+
+        input_buffer = self.data[start, :]
         prdct_values = []
 
-        if steps == 0:
-            steps = len(self.test_true)
-
-        input_values = self.training_data[-1, :]
         for i in range(steps):
-            prdct_output = self.forward(input_values)
+            prdct_output = self.forward(input_buffer)
             prdct_values.append(prdct_output)
-            input_values = np.append(input_values[1:], prdct_output)
+            input_buffer = np.append(input_buffer[1:], prdct_output)
 
         return prdct_values
 
@@ -133,11 +157,16 @@ class NeuralNet:
 
         return prdct_values
 
-    def plot_predict_multi(self, steps=0):
+    def plot_predict_multi(self, steps=-1, start=0):
         # Plots a comparison between predicted and true movement
-        prdct_values = self.predict_multi(steps)
-        plt.plot(self.test_true)
-        plt.plot(prdct_values)
+        if steps == -1:
+            steps = len(self.true[start:])
+        
+        steps = min(steps, len(self.true) - start)        
+        prdct_values = self.predict_multi(steps, start)
+        plt.plot(self.true)        
+        x_vals = [i for i in range(start, start+steps)]
+        plt.plot(x_vals, prdct_values)
         plt.legend(['True Values', 'Predicted Values'])
 
     def plot_predict_sngle(self):
@@ -147,6 +176,6 @@ class NeuralNet:
         plt.legend(['True Values', 'Predicted Values'])
 
 
-network = NeuralNet(path)
+network = NeuralNet(path,do_sub_sample=False)
 
-network.train_network(epochs=100)
+network.train_network(epochs=1000)

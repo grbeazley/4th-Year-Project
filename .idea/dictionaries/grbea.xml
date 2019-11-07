@@ -2,7 +2,9 @@
   <dictionary name="grbea">
     <words>
       <w>prdct</w>
+      <w>sngle</w>
       <w>tanh</w>
+      <w>vals</w>
     </words>
   </dictionary>
 </component>
