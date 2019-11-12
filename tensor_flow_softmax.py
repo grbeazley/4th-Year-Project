@@ -1,6 +1,5 @@
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
-tf.enable_eager_execution()
 import pandas as pd
 import numpy as np
 
@@ -8,18 +7,20 @@ import numpy as np
 path = "Data Sets\\GBP-USD Hourly.csv"
 data_from_file = pd.read_csv(path).values[:, 1]
 
+size = 12
+
 # Normalise input data
 # self.data_from_file = self.normalise_data(self.data_from_file)
 
 # Get true_direction value as every 4th entry, starting from 12
-ground_truth = data_from_file[12:]
+ground_truth = data_from_file[size:]
 
 # Initialise empty vector
-all_data = np.zeros([len(ground_truth), 12])
+all_data = np.zeros([len(ground_truth), size])
 
 # Create n 1x12 vectors and store them in a matrix
 for idx in range(len(ground_truth)):
-    all_data[idx, :] = data_from_file[idx:idx + 12]
+    all_data[idx, :] = data_from_file[idx:idx + size]
 
 # Find the correct direction
 true_direction = np.zeros([len(ground_truth), 2])
@@ -60,12 +61,12 @@ test_dataset = test_dataset.batch(batch_size)
 
 # declare the training data placeholders
 # input x - 12
-x = tf.placeholder(tf.float32, [None, 12])
+x = tf.placeholder(tf.float32, [None, size])
 # now declare the output data placeholder - 2 possibilities up or down
 y = tf.placeholder(tf.float32, [None, 2])
 
 # now declare the weights connecting the input to the hidden layer
-W1 = tf.Variable(tf.random_normal([12, 32], stddev=0.03), name='W1')
+W1 = tf.Variable(tf.random_normal([size, 32], stddev=0.03), name='W1')
 b1 = tf.Variable(tf.random_normal([32]), name='b1')
 # and the weights connecting the hidden layer to the output layer
 W2 = tf.Variable(tf.random_normal([32, 2], stddev=0.03), name='W2')
@@ -92,6 +93,11 @@ init_op = tf.global_variables_initializer()
 correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+iter = train_dataset.make_one_shot_iterator()
+
+merged = tf.summary.merge_all()
+writer = tf.summary.FileWriter('C:\\Users\\grbea\\OneDrive - University of Cambridge\\4th Year Project\\Code\\Code Outputs')
+
 # start the session
 with tf.Session() as sess:
     # initialise the variables
@@ -100,9 +106,14 @@ with tf.Session() as sess:
     for epoch in range(epochs):
         avg_cost = 0
         for i in range(total_batch):
-            batch_x, batch_y = train_dataset.batch(batch_size=batch_size)
+            batch_x = train_data[i:i + batch_size]
+            batch_y = train_true[i:i + batch_size]
             _, c = sess.run([optimiser, cross_entropy], feed_dict={x: batch_x, y: batch_y})
             avg_cost += c / total_batch
         print("Epoch:", (epoch + 1), "cost =", "{:.3f}".format(avg_cost))
-    print(sess.run(accuracy, feed_dict={x: test_dataset.test.images, y: test_dataset.test.labels}))
+    print(sess.run(accuracy, feed_dict={x: test_data, y: test_true}))
 
+
+    print("\nTraining complete!")
+    writer.add_graph(sess.graph)
+    print(sess.run(accuracy, feed_dict={x: test_data, y: test_true}))

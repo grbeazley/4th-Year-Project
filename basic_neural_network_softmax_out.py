@@ -28,6 +28,29 @@ class NeuralNet:
         self.data, self.true = self.import_data()
         self.training_data, self.training_true, self.test_data, self.test_true = self.split_data(split=0.8)
 
+        # self.training_data = np.array([[5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        #                                [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        #                                [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        #                                [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        #                                [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        #                                [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        #                                [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        #                                [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        #                                [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        #                                [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        #                                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        #                                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        #                                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        #                                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        #                                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        #                                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        #                                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        #                                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        #                                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        #                                ])
+        #
+        # self.train_true = np.array([1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0])
+
         print("Network Created:")
         # print("Batch Size:", self.batch_size)
         print("Learning Rate:", self.alpha)
@@ -93,7 +116,7 @@ class NeuralNet:
         # Calculate the vector of outputs from the hidden layer
         mid_output = sym_sigmoid(np.matmul(data_row, self.mid_weights) + self.mid_bias)
         mid_output = mid_output.flatten()
-        exponents = np.dot(self.out_weights.T, mid_output) + self.out_bias
+        exponents = np.dot(self.out_weights.T, mid_output) + self.out_bias.flatten()
         return softmax(exponents)
 
     # def calc_error(self, calc_on='all'):
@@ -199,6 +222,12 @@ class NeuralNet:
         if sample == 'all':
             for data_row in self.data:
                 prdct_values.append(self.forward(data_row))
+        elif sample == 'train':
+            for data_row in self.training_data:
+                prdct_values.append(self.forward(data_row))
+        elif sample == 'test':
+            for data_row in self.test_data:
+                prdct_values.append(self.forward(data_row))
         else:
             print(sample, 'has not been implemented yet')
 
@@ -225,4 +254,4 @@ class NeuralNet:
 
 network = NeuralNet(path, do_sub_sample=False)
 
-network.train_network(epochs=10)
+network.train_network(epochs=100)
