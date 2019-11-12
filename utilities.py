@@ -27,3 +27,9 @@ def dev_sym_sigmoid(x):
     s = 2/3
     exponential = np.exp(2*s*x)
     return 4*a*s*exponential / (1 + exponential) ** 2
+
+
+def softmax(x):
+    # Returns softmax of an array of exponents
+    exps = np.exp(x)
+    return exps / exps.sum()

@@ -11,14 +11,14 @@ path = "Data Sets\\GBP-USD Hourly.csv"
 
 
 class NeuralNet:
-    def __init__(self, path_to_data, learning_rate=0.0001, do_sub_sample=True):
+    def __init__(self, path_to_data, learning_rate=0.01, do_sub_sample=True):
         self.mid_weights = (np.random.rand(12, 32) - 0.5) * (4.8 / 120)
         self.out_weights = (np.random.rand(32) - 0.5) * (4.8 / 320)
         self.mid_bias = np.zeros(32)
         self.out_bias = np.random.rand(1) * 2
 
         self.alpha = learning_rate
-        self.batch_size = 1000
+        self.batch_size = 1
         self.path = path_to_data
         self.do_sub_sample = do_sub_sample
 
@@ -28,9 +28,9 @@ class NeuralNet:
         self.data, self.true = self.import_data()
         self.training_data, self.training_true, self.test_data, self.test_true = self.split_data(split=0.8)
 
-        print("Network Created: ")
-        print("Batch Size: ", self.batch_size)
-        print("Learning Rate: ", self.alpha)
+        print("Network Created:")
+        print("Batch Size:", self.batch_size)
+        print("Learning Rate:", self.alpha)
 
     def import_data(self):
         # Create a 2D numpy array of date and hourly value
@@ -108,13 +108,13 @@ class NeuralNet:
 
     def train_network(self, epochs):
         for n in range(epochs):
-            for x in range(len(self.training_data) // self.batch_size):
+            for i in range(0, len(self.training_data), self.batch_size):
                 # Create a random choice of indexes from the training data
-                batch_idx = np.random.choice(len(self.training_data), self.batch_size, replace=False)
+                # batch_idx = np.random.choice(len(self.training_data), self.batch_size, replace=False)
 
                 # Select random choice from training data and ground truth
-                data_batch = self.training_data[batch_idx]
-                true_batch = self.training_true[batch_idx]
+                data_batch = self.training_data[i:i + self.batch_size]
+                true_batch = self.training_true[i:i + self.batch_size]
 
                 # Calculate the output of the middle layer of the network
                 update = sym_sigmoid(np.matmul(data_batch, self.mid_weights) + self.mid_bias)
@@ -191,4 +191,4 @@ class NeuralNet:
 
 network = NeuralNet(path,do_sub_sample=False)
 
-network.train_network(epochs=1000)
+network.train_network(epochs=100)
