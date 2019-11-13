@@ -40,14 +40,14 @@ split_idx = round(len(true_direction) * split)
 train_data, test_data = all_data[:split_idx], all_data[split_idx:]
 train_true, test_true = true_direction[:split_idx], true_direction[split_idx:]
 shfl_idx = np.random.permutation(len(train_true))
-
+train_data, train_true = train_data[shfl_idx], train_true[shfl_idx]
 
 ### TENSOR FLOW ###
 
 # Python optimisation variables
 learning_rate = 0.5
-epochs = 10
-batch_size = 100
+epochs = 20
+batch_size = 1
 shuffle_buffer_size = 100
 
 # Initialise numpy data sets as tensor flow data sets
