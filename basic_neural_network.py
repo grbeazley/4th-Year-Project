@@ -7,12 +7,13 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-path = "Data Sets\\GBP-USD Hourly.csv"
-
+# path = "Data Sets\\Forex\\GBP-USD Hourly.csv"
+path = "Data Sets\\Electricity\\UK Elec Hourly - no weekends.csv"
+input_size = 24
 
 class NeuralNet:
-    def __init__(self, path_to_data, learning_rate=0.05, do_sub_sample=True):
-        self.mid_weights = (np.random.rand(12, 32) - 0.5) * (4.8 / 12)
+    def __init__(self, path_to_data, learning_rate=0.005, do_sub_sample=True):
+        self.mid_weights = (np.random.rand(input_size, 32) - 0.5) * (4.8 / input_size)
         self.out_weights = (np.random.rand(32) - 0.5) * (4.8 / 32)
         self.mid_bias = np.zeros(32)
         self.out_bias = np.random.rand(1) * 2
@@ -32,23 +33,23 @@ class NeuralNet:
         self.data_from_file = pd.read_csv(self.path).values[:, 1]
 
         # Normalise input data
-        # self.data_from_file = self.normalise_data(self.data_from_file)
+        self.data_from_file = self.normalise_data(self.data_from_file)
 
         # Get true value as every 4th entry, starting from 12
-        ground_truth = self.data_from_file[12:]
+        ground_truth = self.data_from_file[input_size:]
 
         # Initialise empty vector
-        all_data = np.zeros([len(ground_truth), 12])
+        all_data = np.zeros([len(ground_truth), input_size])
 
         # Create n 1x12 vectors and store them in a matrix
         for idx in range(len(ground_truth)):
-            all_data[idx, :] = self.data_from_file[idx:idx + 12]
+            all_data[idx, :] = self.data_from_file[idx:idx + input_size]
 
         return all_data, ground_truth
 
     def normalise_data(self, data):
         # Subtracts mean and scales data
-        norm_data = (data - np.mean(data))/np.var(data)
+        norm_data = (data - np.mean(data))/np.std(data)
 
         return norm_data
 
@@ -177,4 +178,4 @@ class NeuralNet:
 
 network = NeuralNet(path, do_sub_sample=False)
 
-# network.train_network(epochs=300)
+network.train_network(epochs=100)

@@ -50,6 +50,6 @@ model.compile(optimizer='adam',
               loss='mse',
               metrics=['mae'])
 
-model.fit(train_data, train_true, epochs=200)
+model.fit(train_data, train_true, epochs=200, verbose=1)
 
 model.evaluate(test_data,  test_true, verbose=2)
