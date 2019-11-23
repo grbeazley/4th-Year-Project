@@ -1,16 +1,21 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+#import tensorflow as tf
+#import matplotlib as mpl
+#import os
 import pandas as pd
 import numpy as np
-from scipy import signal
 import matplotlib.pyplot as plt
 
 """
-CODE TAKEN FROM https://github.com/akcarsten/Independent_Component_Analysis
+FIRST 5 FUNCTIONS: CODE TAKEN FROM https://github.com/akcarsten/Independent_Component_Analysis
 """
+
 
 def centre(x):
     mean = np.mean(x, axis=1, keepdims=True)
     centered = x - mean
     return centered, mean
+
 
 def covariance(x):
     mean = np.mean(x, axis=1, keepdims=True)
@@ -20,9 +25,9 @@ def covariance(x):
     return (m.dot(m.T))/n
 
 
-def whiten(X):
+def whiten(x):
     # Calculate the covariance matrix
-    coVarM = covariance(X)
+    coVarM = covariance(x)
 
     # Single value decomposition
     U, S, V = np.linalg.svd(coVarM)
@@ -34,7 +39,7 @@ def whiten(X):
     whiteM = np.dot(U, np.dot(d, U.T))
 
     # Project onto whitening matrix
-    Xw = np.dot(whiteM, X)
+    Xw = np.dot(whiteM, x)
 
     return Xw, whiteM
 
@@ -83,81 +88,39 @@ def fastIca(signals, alpha=1, thresh=1e-8, iterations=5000):
 
 def sign(r):
     # Computes the sign of r
-    # TODO make it work for vectors
-    if r > 0:
-        return 1
-    if r == 0:
-        return 0
+    if isinstance(r, (list, np.ndarray)):
+        # Assume an array
+        neg_indexes = np.where(r < 0)
+        pos_indexes = np.where(r > 0)
+        r[neg_indexes] = -1
+        r[pos_indexes] = 1
+        return r
     else:
-        return -1
+        # Assume it is a single value
+        if r > 0:
+            return 1
+        if r == 0:
+            return 0
+        else:
+            return -1
 
 
 def rhd(model, true):
     # Function to calculate the Relative Hamming Distance (RHD)
     num_points = len(model)
+    true_r = sign(true[1:] - true[:-1])
+    model_r = sign(model[1:] - model[:-1])
+    squared_diff = np.sum(np.square(true_r - model_r))
+    return squared_diff / (num_points - 1)
 
 
-N = 255
-
-stem = "Data Sets\\FTSEICA\\"
-
-names = {"BARC Historical Data.csv": [1],
-         "BP Historical Data.csv": [1],
-         "FTSE 100 Futures Historical Data.csv": [1],
-         "FTSE 100 Historical Data.csv": [1, 2, 3, 4, 5],
-         "LLOY Historical Data.csv": [1],
-         "TW Historical Data.csv": [1],
-         "Glen Historical Data.csv": [1],
-         "United Kingdom 3-Month Bond Yield Historical Data.csv": [1],
-         "United Kingdom 1-Month Bond Yield Historical Data.csv": [1],
-         "VOD Historical Data.csv": [1],
-         }
-
-paths = [stem + name for name in names.keys()]
-num_columns = sum([len(cols) for cols in names.values()])
-data = np.zeros([N, num_columns])
-
-i = 0
-for path in paths:
-    columns = names[path[len(stem):]]
-    data_in = pd.read_csv(path).values[:, columns]
-    if data_in.shape[0] != N:
-        # Data contains bank holidays etc. so remove
-        mask = np.ones(data_in.shape[0], dtype=bool)
-        if data_in.shape[0] == 263:
-            mask[[49, 114, 129, 139, 140, 218, 222, 223]] = False
-        elif data_in.shape[0] == 261:
-            mask[[49, 114, 129, 139, 140, 222]] = False
-        else:
-            print("Unexpected length")
-        data_in = data_in[mask]
-    data[:, i:i + len(columns)] = data_in
-    i += len(columns)
-
-data_difference = (data[:-1, :] - data[1:, :]).T
-
-X = np.flip(data_difference, 1)
-
-# Center signals
-Xc, meanX = centre(X)
-
-# Whiten mixed signals
-Xw, whiteM = whiten(Xc)
-
-
-# Check if covariance of whitened matrix equals identity matrix
-print(np.round(covariance(Xw)))
-
-W = fastIca(Xw,  alpha=1)
-
-# Un-mix signals using
-unMixed = Xw.T.dot(W.T)
-
-for i in range(num_columns):
-    plt.subplot(num_columns, 1, i+1)
-    plt.plot(unMixed[:, i])
-
-plt.show()
-
-# Re add mean
-unMixed_scaled = (unMixed.T + meanX).T
+def comp_ica(data):
+    # data is an m x N matrix where N is the number of data points and m is the number of series
+    # Returns calculated independent components and the mixing matrix to recombine them
+    # independent * mixing matrix = original signals
+    data_centred, _ = centre(data)
+    data_whitened, _ = whiten(data_centred)
+    unmix_matrix = fastIca(data_whitened, alpha=1)
+    mix_matrix = np.linalg.inv(unmix_matrix)
+    latent_signals = np.dot(data_whitened.T, unmix_matrix.T)
+    return latent_signals, mix_matrix
