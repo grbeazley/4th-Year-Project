@@ -114,13 +114,18 @@ def rhd(model, true):
     return squared_diff / (num_points - 1)
 
 
+def whiten_data(data):
+    # Whitens input m x N time series data
+    data_centred, _ = centre(data)
+    data_whitened, _ = whiten(data_centred)
+    return data_whitened
+
+
 def comp_ica(data):
     # data is an m x N matrix where N is the number of data points and m is the number of series
     # Returns calculated independent components and the mixing matrix to recombine them
     # independent * mixing matrix = original signals
-    data_centred, _ = centre(data)
-    data_whitened, _ = whiten(data_centred)
-    unmix_matrix = fastIca(data_whitened, alpha=1)
+    unmix_matrix = fastIca(data, alpha=1)
     mix_matrix = np.linalg.inv(unmix_matrix)
-    latent_signals = np.dot(data_whitened.T, unmix_matrix.T)
+    latent_signals = np.dot(data.T, unmix_matrix.T)
     return latent_signals, mix_matrix

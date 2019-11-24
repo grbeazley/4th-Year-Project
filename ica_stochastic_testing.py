@@ -2,69 +2,67 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 #import tensorflow as tf
 #import matplotlib as mpl
 #import os
+
+from utilities import load_data, log_returns, normalise
+from ica import whiten_data, comp_ica, rhd
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-N = 255
+
+def plot_sto_vol(time_series):
+    if len(time_series.shape) != 1:
+        for series_idx in range(time_series.shape[0]):
+            plt.figure(series_idx)
+            lgr = log_returns(time_series[series_idx, :])
+            plt.scatter(np.arange(len(lgr)), lgr, s=5)
+    else:
+        lgr = log_returns(time_series)
+        plt.scatter(np.arange(len(lgr)), lgr, s=5)
+
+
+# Set the random seed for reproducibility
 np.random.seed(0)
 
-stem = "Data Sets\\FTSEICA\\"
+stem = "Data Sets\\FTSEICA_sto_vol\\"
 
-names = {"BARC Historical Data.csv": [1],
-         "BP Historical Data.csv": [1],
-         "FTSE 100 Futures Historical Data.csv": [1],
-         "FTSE 100 Historical Data.csv": [1, 2, 3, 4, 5],
-         "LLOY Historical Data.csv": [1],
-         "TW Historical Data.csv": [1],
-         "Glen Historical Data.csv": [1],
-         "United Kingdom 3-Month Bond Yield Historical Data.csv": [1],
-         "United Kingdom 1-Month Bond Yield Historical Data.csv": [1],
-         "VOD Historical Data.csv": [1],
-         # "BCS.csv": [5],
+names = {"FTSE 250 Historical Data.csv": ['Price'],
+         "FTSE 100 Historical Data.csv": ['Price', 'High', 'Low'],
+         "BA.L.csv": ['Adj Close'],
+         "BATS.L.csv": ['Adj Close'],
+         "BP.csv": ['Adj Close'],
+         "GSK.L.csv": ['Adj Close'],
+         "LLOY.L.csv": ['Adj Close'],
+         "NG.L.csv": ['Adj Close'],
+         "ULVR.L.csv": ['Adj Close'],
+         "United Kingdom 1-Year Bond Yield Historical Data.csv": ['Price'],
+         "United Kingdom 3-Month Bond Yield Historical Data.csv": ['Price'],
+         "United Kingdom 30-Year Bond Yield Historical Data.csv": ['Price'],
+         "VOD.L.csv": ['Adj Close'],
          }
 
-paths = [stem + name for name in names.keys()]
-num_columns = sum([len(cols) for cols in names.values()])
-data = np.zeros([N, num_columns])
+data_frame = load_data(stem, names)
 
-i = 0
-for path in paths:
-    columns = names[path[len(stem):]]
-    data_in = pd.read_csv(path).values[:, columns]
-    if data_in.shape[0] != N:
-        # Data contains bank holidays etc. so remove
-        mask = np.ones(data_in.shape[0], dtype=bool)
-        if data_in.shape[0] == 263:
-            mask[[49, 114, 129, 139, 140, 218, 222, 223]] = False
-        elif data_in.shape[0] == 261:
-            mask[[49, 114, 129, 139, 140, 222]] = False
-        else:
-            print("Unexpected length")
-        data_in = data_in[mask]
-    data[:, i:i + len(columns)] = data_in
-    i += len(columns)
+# Take only series values from the data frame
+data = data_frame.values[1:, :].astype('float')
+num_series = len(data[:, 0])
 
-data_difference = (data[:-1, :] - data[1:, :]).T
+# Take the dates from the data frame for plotting
+dates = data_frame.values[0, :]
 
-X = np.flip(data_difference, 1)
+# Compute whitened data
+data_whitened = whiten_data(data)
+# Compute centred data
+data_norm = normalise(data)
 
-# Center signals
-Xc, meanX = centre(X)
-
-# Whiten mixed signals
-Xw, whiteM = whiten(Xc)
-
-W = fastIca(Xw,  alpha=1)
-invW = np.linalg.inv(W.T)
-
-# Un-mix signals using
-unMixed = Xw.T.dot(W.T)
+# Compute independent components
+icas, mix_matrix = comp_ica(data_whitened)
 
 plt.figure(0)
-for i in range(num_columns):
-    plt.subplot(num_columns, 1, i+1)
-    plt.plot(unMixed[:, i])
+for i in range(num_series):
+    plt.subplot(num_series, 1, i+1)
+    plt.plot(icas[:, i])
     plt.ylim([-10, 10])
 
 plt.show()
@@ -98,21 +96,18 @@ plt.show()
 #         index = index[0]
 #     IC_order.append(index)
 
-rhds = np.zeros(num_columns)
-for i in range(num_columns):
+rhds = np.zeros(num_series)
+for i in range(num_series):
     # Check all RHD values for different combinations
-    mask = np.ones(num_columns, dtype=bool)
+    mask = np.ones(num_series, dtype=bool)
     mask[i] = False
-    invW_trunc = invW.T[:, mask]
-    model = np.dot(invW_trunc, unMixed[:, mask].T)
-    for j in range(num_columns):
-        rhds[i] += rhd(model[j, :], Xw[j, :])
+    invW_trunc = mix_matrix.T[:, mask]
+    model = np.dot(invW_trunc, icas[:, mask].T)
+    for j in range(num_series):
+        rhds[i] += rhd(model[j, :], data_whitened[j, :])
 
 plt.figure(1)
 plt.plot(rhds)
 plt.xlabel('Component Index')
 plt.ylabel('Relative Hamming Distance')
 
-
-# Re add mean
-unMixed_scaled = (unMixed.T + meanX).T

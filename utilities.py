@@ -1,6 +1,14 @@
 import numpy as np
 import pandas as pd
 
+
+def normalise(data):
+    # Normalises a data series by subtracting mean and dividing by standard deviation
+    mean = np.mean(data, axis=1, keepdims=True)
+    stds = np.std(data, axis=1, keepdims=True)
+    return (data - mean) / stds
+
+
 def sigmoid(x):
     """
     Computes the sigmoid function for scalar or vector x
@@ -45,13 +53,14 @@ def log_returns(time_series):
 def load_data(stem, paths_dict, index_type='str'):
     # Loads all csvs based on stem and paths dictionary
     # Assumes first path has correct data length (by dates)
+    # Returns m x N data frame with datetime as the first row
 
     first_name = list(paths_dict.keys())[0]
     first_path = stem + first_name
     first_columns = paths_dict[first_name]
     if index_type == 'str':
         # Using character based column indexes
-        first_columns.append('Dates')
+        first_columns.append('Date')
         base = pd.read_csv(first_path, usecols=first_columns)
     else:
         # Using numeric column indexes, dates = 0th column
@@ -70,7 +79,7 @@ def load_data(stem, paths_dict, index_type='str'):
         columns = paths_dict[key]
         if index_type == 'str':
             # Using character based column indexes
-            columns.append('Dates')
+            columns.append('Date')
             data_in = pd.read_csv(path, usecols=columns)
         else:
             # Using numeric column indexes, dates = 0th column
@@ -80,10 +89,17 @@ def load_data(stem, paths_dict, index_type='str'):
         # Ensure all dates in a standard form
         data_in['Date'] = pd.to_datetime(data_in['Date'], errors='coerce')
 
-        # Join new data to data frame using a left join
-        base = base.merge(data_in, how='left', on='Date', suffixes=['_orig', '_'+key])
+        # Join new data to data frame using an inner join to avoid NaN
+        base = base.merge(data_in, how='inner', on='Date', suffixes=['_orig', '_'+key])
 
-    return base
+    # Make time series increasing chronology
+    base_sorted = base.sort_values(by='Date')
+
+    # Transpose dataframe to make it m x N
+    base_mbyn = base_sorted.transpose()
+
+    # Remove any NaN columns which have made it through
+    return base_mbyn.dropna(axis=1)
 
 
 if __name__ == "__main__":
