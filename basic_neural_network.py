@@ -11,6 +11,7 @@ from matplotlib import pyplot as plt
 path = "Data Sets\\Electricity\\UK Elec Hourly - no weekends.csv"
 input_size = 24
 
+
 class NeuralNet:
     def __init__(self, path_to_data, learning_rate=0.005, do_sub_sample=True):
         self.mid_weights = (np.random.rand(input_size, 32) - 0.5) * (4.8 / input_size)

@@ -96,10 +96,10 @@ def load_data(stem, paths_dict, index_type='str'):
     base_sorted = base.sort_values(by='Date')
 
     # Transpose dataframe to make it m x N
-    base_mbyn = base_sorted.transpose()
+    base_m_n = base_sorted.transpose()
 
     # Remove any NaN columns which have made it through
-    return base_mbyn.dropna(axis=1)
+    return base_m_n.dropna(axis=1)
 
 
 if __name__ == "__main__":

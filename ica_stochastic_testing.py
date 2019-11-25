@@ -46,6 +46,11 @@ data_frame = load_data(stem, names)
 
 # Take only series values from the data frame
 data = data_frame.values[1:, :].astype('float')
+
+# Take difference
+# data = data[:, :-1] - data[:, 1:]
+
+# Calculate the number of time series
 num_series = len(data[:, 0])
 
 # Take the dates from the data frame for plotting
@@ -106,7 +111,7 @@ for i in range(num_series):
     for j in range(num_series):
         rhds[i] += rhd(model[j, :], data_whitened[j, :])
 
-plt.figure(1)
+plt.figure(15)
 plt.plot(rhds)
 plt.xlabel('Component Index')
 plt.ylabel('Relative Hamming Distance')
