@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 
 def plot_sto_vol(time_series):
     if len(time_series.shape) != 1:
+        if np.argmax(time_series.shape) != 1:
+            # Input matrix is N x m so transpose
+            time_series = time_series.T
         for series_idx in range(time_series.shape[0]):
             plt.figure(series_idx)
             lgr = log_returns(time_series[series_idx, :])
@@ -20,6 +23,11 @@ def plot_sto_vol(time_series):
     else:
         lgr = log_returns(time_series)
         plt.scatter(np.arange(len(lgr)), lgr, s=5)
+
+
+def recover(time_series):
+    long_axis = np.argmax(time_series.shape)
+    return np.cumsum(time_series, axis=long_axis)
 
 
 # Set the random seed for reproducibility
@@ -48,7 +56,7 @@ data_frame = load_data(stem, names)
 data = data_frame.values[1:, :].astype('float')
 
 # Take difference
-# data = data[:, :-1] - data[:, 1:]
+data_returns = data[:, :-1] - data[:, 1:]
 
 # Calculate the number of time series
 num_series = len(data[:, 0])
@@ -58,11 +66,14 @@ dates = data_frame.values[0, :]
 
 # Compute whitened data
 data_whitened = whiten_data(data)
+
 # Compute centred data
 data_norm = normalise(data)
 
+calc_data = whiten_data(data_returns)
+
 # Compute independent components
-icas, mix_matrix = comp_ica(data_whitened)
+icas, mix_matrix = comp_ica(calc_data)
 
 plt.figure(0)
 for i in range(num_series):
@@ -109,7 +120,7 @@ for i in range(num_series):
     invW_trunc = mix_matrix.T[:, mask]
     model = np.dot(invW_trunc, icas[:, mask].T)
     for j in range(num_series):
-        rhds[i] += rhd(model[j, :], data_whitened[j, :])
+        rhds[i] += rhd(model[j, :], calc_data[j, :])
 
 plt.figure(15)
 plt.plot(rhds)
