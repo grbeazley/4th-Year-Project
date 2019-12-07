@@ -1,6 +1,4 @@
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
 """
 FIRST 5 FUNCTIONS: CODE TAKEN FROM https://github.com/akcarsten/Independent_Component_Analysis

@@ -1,5 +1,5 @@
 #
-# Implements a neural network with 12-32-1 architecture and tanh activation function
+# Implements a neural network with input size-hidden size-1 architecture and tanh activation function
 #
 
 from utilities import sym_sigmoid, dev_sym_sigmoid
@@ -7,16 +7,14 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-# path = "Data Sets\\Forex\\GBP-USD Hourly.csv"
-path = "Data Sets\\Electricity\\UK Elec Hourly - no weekends.csv"
-input_size = 24
-
 
 class NeuralNet:
-    def __init__(self, path_to_data, learning_rate=0.005, do_sub_sample=True):
-        self.mid_weights = (np.random.rand(input_size, 32) - 0.5) * (4.8 / input_size)
-        self.out_weights = (np.random.rand(32) - 0.5) * (4.8 / 32)
-        self.mid_bias = np.zeros(32)
+    def __init__(self, path_to_data, learning_rate=0.005, input_size=24, hidden_size=32, do_sub_sample=True):
+        self.input_dim = input_size
+        self.mid_dim = hidden_size
+        self.mid_weights = (np.random.rand(self.input_dim, self.mid_dim) - 0.5) * (4.8 / self.input_dim)
+        self.out_weights = (np.random.rand(self.mid_dim) - 0.5) * (4.8 / self.mid_dim)
+        self.mid_bias = np.zeros(self.mid_dim)
         self.out_bias = np.random.rand(1) * 2
 
         self.alpha = learning_rate
@@ -37,14 +35,14 @@ class NeuralNet:
         self.data_from_file = self.normalise_data(self.data_from_file)
 
         # Get true value as every 4th entry, starting from 12
-        ground_truth = self.data_from_file[input_size:]
+        ground_truth = self.data_from_file[self.input_dim:]
 
         # Initialise empty vector
-        all_data = np.zeros([len(ground_truth), input_size])
+        all_data = np.zeros([len(ground_truth), self.input_dim])
 
         # Create n 1x12 vectors and store them in a matrix
         for idx in range(len(ground_truth)):
-            all_data[idx, :] = self.data_from_file[idx:idx + input_size]
+            all_data[idx, :] = self.data_from_file[idx:idx + self.input_dim]
 
         return all_data, ground_truth
 
@@ -177,6 +175,12 @@ class NeuralNet:
         plt.legend(['True Values', 'Predicted Values'])
 
 
-network = NeuralNet(path, do_sub_sample=False)
+if __name__ == "__main__":
+    # path = "Data Sets\\Forex\\GBP-USD Hourly.csv"
+    path = "Data Sets\\Electricity\\UK Elec Hourly - no weekends.csv"
 
-network.train_network(epochs=100)
+    # Create a network class
+    network = NeuralNet(path, input_size=48, hidden_size=64, do_sub_sample=False)
+
+    # Train the network
+    network.train_network(epochs=10)
