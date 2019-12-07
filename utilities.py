@@ -47,7 +47,7 @@ def softmax(x):
 def log_returns(time_series):
     # Computes the log returns for an input time series
     # Assumes in chronological order and takes Pt - Pt-1
-    return np.log(time_series[:-1]) - np.log(time_series[1:])
+    return np.log(time_series[1:]) - np.log(time_series[:-1])
 
 
 def load_data(stem, paths_dict, index_type='str'):

@@ -86,15 +86,16 @@ def fastIca(signals, alpha=1, thresh=1e-8, iterations=5000):
     return W
 
 
-def sign(r):
+def comp_sign(r):
     # Computes the sign of r
     if isinstance(r, (list, np.ndarray)):
         # Assume an array
         neg_indexes = np.where(r < 0)
         pos_indexes = np.where(r > 0)
-        r[neg_indexes] = -1
-        r[pos_indexes] = 1
-        return r
+        r_out = np.zeros(len(r))
+        r_out[neg_indexes] = -1
+        r_out[pos_indexes] = 1
+        return r_out
     else:
         # Assume it is a single value
         if r > 0:
@@ -108,8 +109,8 @@ def sign(r):
 def rhd(model, true):
     # Function to calculate the Relative Hamming Distance (RHD)
     num_points = len(model)
-    true_r = sign(true[1:] - true[:-1])
-    model_r = sign(model[1:] - model[:-1])
+    true_r = comp_sign(true[1:] - true[:-1])
+    model_r = comp_sign(model[1:] - model[:-1])
     squared_diff = np.sum(np.square(true_r - model_r))
     return squared_diff / (num_points - 1)
 

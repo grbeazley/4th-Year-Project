@@ -1,8 +1,3 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-#import tensorflow as tf
-#import matplotlib as mpl
-#import os
-
 from utilities import load_data, log_returns, normalise
 from ica import whiten_data, comp_ica, rhd
 
@@ -11,16 +6,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_sto_vol(time_series):
+def plot_sto_vol(time_series, conv_type=None):
     if len(time_series.shape) != 1:
         if np.argmax(time_series.shape) != 1:
             # Input matrix is N x m so transpose
             time_series = time_series.T
         for series_idx in range(time_series.shape[0]):
             plt.figure(series_idx)
-            lgr = log_returns(time_series[series_idx, :])
-            plt.scatter(np.arange(len(lgr)), lgr, s=5)
+            if conv_type == 'log':
+                # Use log returns
+                ratio = log_returns(time_series[series_idx, :])
+            elif conv_type == 'div':
+                # Use just a ratio
+                ratio = time_series[series_idx, 1:] / time_series[series_idx, :-1]
+            else:
+                ratio = time_series[series_idx, :]
+            # Plot scatter graphs for each time series
+            plt.scatter(np.arange(len(ratio)), ratio, s=5)
     else:
+        # Single dimension passed
         lgr = log_returns(time_series)
         plt.scatter(np.arange(len(lgr)), lgr, s=5)
 
@@ -44,7 +48,7 @@ names = {"FTSE 250 Historical Data.csv": ['Price'],
          "LLOY.L.csv": ['Adj Close'],
          "NG.L.csv": ['Adj Close'],
          "ULVR.L.csv": ['Adj Close'],
-         "United Kingdom 1-Year Bond Yield Historical Data.csv": ['Price'],
+         # "United Kingdom 1-Year Bond Yield Historical Data.csv": ['Price'],
          "United Kingdom 3-Month Bond Yield Historical Data.csv": ['Price'],
          "United Kingdom 30-Year Bond Yield Historical Data.csv": ['Price'],
          "VOD.L.csv": ['Adj Close'],
@@ -56,7 +60,7 @@ data_frame = load_data(stem, names)
 data = data_frame.values[1:, :].astype('float')
 
 # Take difference
-data_returns = data[:, :-1] - data[:, 1:]
+data_returns = np.log(data[:, 1:] / data[:, :-1])
 
 # Calculate the number of time series
 num_series = len(data[:, 0])
@@ -123,7 +127,7 @@ for i in range(num_series):
         rhds[i] += rhd(model[j, :], calc_data[j, :])
 
 plt.figure(15)
-plt.plot(rhds)
+plt.plot(rhds/len(calc_data[:, 0]))
 plt.xlabel('Component Index')
 plt.ylabel('Relative Hamming Distance')
 
