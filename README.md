@@ -28,7 +28,7 @@ network.train_network(epochs=100)
 
 #### Independent Component Analysis
 To perform independent Component Analysis on a mixed time series:
-```pythonstub
+```python
 from ica import whiten_data, comp_ica
 from utilities import normalise
 
