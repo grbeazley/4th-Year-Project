@@ -12,7 +12,7 @@ def plot_sto_vol(time_series, conv_type=None):
             # Input matrix is N x m so transpose
             time_series = time_series.T
         for series_idx in range(time_series.shape[0]):
-            plt.figure(series_idx)
+            plt.figure()
             if conv_type == 'log':
                 # Use log returns
                 ratio = log_returns(time_series[series_idx, :])
@@ -130,4 +130,6 @@ plt.figure(15)
 plt.plot(rhds/len(calc_data[:, 0]))
 plt.xlabel('Component Index')
 plt.ylabel('Relative Hamming Distance')
+
+plot_sto_vol(icas,None)
 
