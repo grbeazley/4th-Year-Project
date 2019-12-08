@@ -2,10 +2,12 @@
   <dictionary name="grbea">
     <words>
       <w>dataset</w>
+      <w>kurtosis</w>
       <w>prdct</w>
       <w>sngle</w>
       <w>softmax</w>
       <w>tanh</w>
+      <w>univariate</w>
       <w>vals</w>
     </words>
   </dictionary>

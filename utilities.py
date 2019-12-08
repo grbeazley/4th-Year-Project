@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy.stats import kurtosis
 
 
 def normalise(data):
@@ -100,6 +101,43 @@ def load_data(stem, paths_dict, index_type='str'):
 
     # Remove any NaN columns which have made it through
     return base_m_n.dropna(axis=1)
+
+
+def is_normal(data):
+    # Useful for quickly checking if a data series is normal or not
+    if type(data) == np.ndarray:
+        # Data is a numpy array
+        if data.ndim == 1:
+            # Data is a 1d numpy array so treat like a list
+            kurt = abs(kurtosis(data))
+        else:
+            short_dim_idx = np.argmin(data.shape)
+            size = data.shape[short_dim_idx]
+
+            if short_dim_idx == 0:
+                # Rows is the short side
+                kurts = abs(np.array([kurtosis(data[j, :]) for j in range(size)]))
+                kurt = np.min(kurts)
+            elif short_dim_idx == 1:
+                # Columns are the short side
+                kurts = abs(np.array([kurtosis(data[:, j]) for j in range(size)]))
+                kurt = np.min(kurts)
+            else:
+                raise Exception("Unexpected data dimension provided")
+
+    elif type(data) == list:
+        # Data is a list
+        kurt = abs(kurtosis(data))
+
+    else:
+        raise TypeError("Data Type not expected, please provide list or numpy array")
+
+    # Check the smallest absolute kurtosis is far from 0
+    if kurt < 0.1:
+        raise Exception("Kurtosis of data is too close to Gaussian:", kurt)
+    elif kurt < 1:
+        raise Warning("Kurtosis is", kurt)
+
 
 
 if __name__ == "__main__":
