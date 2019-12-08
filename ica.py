@@ -108,6 +108,36 @@ def rhd(model, true):
     squared_diff = np.sum(np.square(true_r - model_r))
     return squared_diff / (num_points - 1)
 
+    ### RHD Iterative
+    # IC_order = []
+    # for k in range(num_columns):
+    #     # Check all combinations, decreasing each time
+    #     rhds = np.zeros(num_columns-k)
+    #     mask = np.ones(num_columns, dtype=bool)
+    #     mask[IC_order] = False
+    #     invW_trunc = invW.T[:, mask]
+    #     unMixed_trunc = unMixed[:, mask]
+    #     # print(mask)
+    #
+    #     for i in range(num_columns-k):
+    #         # Check RHD by dropping one of the remaining ICs in turn
+    #         mask_iter = np.ones(num_columns-k, dtype=bool)
+    #         mask_iter[i] = False
+    #         invW_trunc_iter = invW_trunc[:, mask_iter]
+    #         model = np.dot(invW_trunc_iter, unMixed_trunc[:, mask_iter].T)
+    #         for j in range(num_columns):
+    #             rhds[i] += rhd(model[j, :], Xw[j, :])
+    #
+    #     plt.figure(k+1)
+    #     plt.plot(rhds)
+    #     plt.xlabel('Component Index')
+    #     plt.ylabel('Relative Hamming Distance')
+    #     index = np.argmax(rhds)
+    #     print(index)
+    #     if isinstance(index, list):
+    #         index = index[0]
+    #     IC_order.append(index)
+
 
 def whiten_data(data):
     # Whitens input m x N time series data
@@ -122,5 +152,5 @@ def comp_ica(data):
     # independent * mixing matrix = original signals
     unmix_matrix = fastIca(data, alpha=1)
     mix_matrix = np.linalg.inv(unmix_matrix)
-    latent_signals = np.dot(data.T, unmix_matrix.T)
+    latent_signals = np.dot(data.T, unmix_matrix.T).T
     return latent_signals, mix_matrix

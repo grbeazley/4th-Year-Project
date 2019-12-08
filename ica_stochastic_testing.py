@@ -1,5 +1,6 @@
-from utilities import load_data, log_returns, normalise
+from utilities import load_data, log_returns, normalise, is_normal
 from ica import whiten_data, comp_ica, rhd
+from stochastic_volatility import gen_univ_sto_vol
 
 import pandas as pd
 import numpy as np
@@ -25,8 +26,11 @@ def plot_sto_vol(time_series, conv_type=None):
             plt.scatter(np.arange(len(ratio)), ratio, s=5)
     else:
         # Single dimension passed
-        lgr = log_returns(time_series)
-        plt.scatter(np.arange(len(lgr)), lgr, s=5)
+        if conv_type == 'log':
+            ratio = log_returns(time_series)
+        else:
+            ratio = time_series
+        plt.scatter(np.arange(len(ratio)), ratio, s=5)
 
 
 def recover(time_series):
@@ -37,84 +41,80 @@ def recover(time_series):
 # Set the random seed for reproducibility
 np.random.seed(0)
 
-stem = "Data Sets\\FTSEICA_sto_vol\\"
+# Boolean parameter for switching
+ftse = False
 
-names = {"FTSE 250 Historical Data.csv": ['Price'],
-         "FTSE 100 Historical Data.csv": ['Price', 'High', 'Low'],
-         "BA.L.csv": ['Adj Close'],
-         "BATS.L.csv": ['Adj Close'],
-         "BP.csv": ['Adj Close'],
-         "GSK.L.csv": ['Adj Close'],
-         "LLOY.L.csv": ['Adj Close'],
-         "NG.L.csv": ['Adj Close'],
-         "ULVR.L.csv": ['Adj Close'],
-         # "United Kingdom 1-Year Bond Yield Historical Data.csv": ['Price'],
-         "United Kingdom 3-Month Bond Yield Historical Data.csv": ['Price'],
-         "United Kingdom 30-Year Bond Yield Historical Data.csv": ['Price'],
-         "VOD.L.csv": ['Adj Close'],
-         }
+if ftse:
+    stem = "Data Sets\\FTSEICA_sto_vol\\"
 
-data_frame = load_data(stem, names)
+    names = {"FTSE 250 Historical Data.csv": ['Price'],
+             "FTSE 100 Historical Data.csv": ['Price', 'High', 'Low'],
+             "BA.L.csv": ['Adj Close'],
+             "BATS.L.csv": ['Adj Close'],
+             "BP.csv": ['Adj Close'],
+             "GSK.L.csv": ['Adj Close'],
+             "LLOY.L.csv": ['Adj Close'],
+             "NG.L.csv": ['Adj Close'],
+             "ULVR.L.csv": ['Adj Close'],
+             # "United Kingdom 1-Year Bond Yield Historical Data.csv": ['Price'],
+             "United Kingdom 3-Month Bond Yield Historical Data.csv": ['Price'],
+             "United Kingdom 30-Year Bond Yield Historical Data.csv": ['Price'],
+             "VOD.L.csv": ['Adj Close'],
+             }
 
-# Take only series values from the data frame
-data = data_frame.values[1:, :].astype('float')
+    data_frame = load_data(stem, names)
 
-# Take difference
-data_returns = np.log(data[:, 1:] / data[:, :-1])
+    # Take only series values from the data frame
+    data = data_frame.values[1:, :].astype('float')
 
-# Calculate the number of time series
-num_series = len(data[:, 0])
+    # Take difference
+    data_returns = np.log(data[:, 1:] / data[:, :-1])
 
-# Take the dates from the data frame for plotting
-dates = data_frame.values[0, :]
+    # Calculate the number of time series
+    num_series = len(data[:, 0])
 
-# Compute whitened data
-data_whitened = whiten_data(data)
+    # Take the dates from the data frame for plotting
+    dates = data_frame.values[0, :]
 
-# Compute centred data
-data_norm = normalise(data)
+    # Compute whitened data
+    data_whitened = whiten_data(data)
 
-calc_data = whiten_data(data_returns)
+    # Compute centred data
+    data_norm = normalise(data)
+
+    calc_data = whiten_data(normalise(data_returns))
+
+else:
+    # Generate truck and trailer series
+    N = 2400
+    prim_data = gen_univ_sto_vol(N, a=0.99, b=0.2, c=0.1)
+    data = np.array([prim_data, prim_data + 0.1*np.random.randn(N)])
+
+    num_series = 2
+
+    # Compute centred data
+    data_norm = normalise(data)
+
+    # Compute whitened data
+    data_whitened = whiten_data(data)
+
+    calc_data = data_whitened
+
+
+# Test Gaussianity of data
+kurts = is_normal(calc_data)
 
 # Compute independent components
 icas, mix_matrix = comp_ica(calc_data)
 
-plt.figure(0)
+plt.figure()
+num_points = len(icas[0, :])
 for i in range(num_series):
     plt.subplot(num_series, 1, i+1)
-    plt.plot(icas[:, i])
+    plt.scatter(np.arange(num_points), icas[i, :], s=1)
     plt.ylim([-10, 10])
 
 plt.show()
-
-# IC_order = []
-# for k in range(num_columns):
-#     # Check all combinations, decreasing each time
-#     rhds = np.zeros(num_columns-k)
-#     mask = np.ones(num_columns, dtype=bool)
-#     mask[IC_order] = False
-#     invW_trunc = invW.T[:, mask]
-#     unMixed_trunc = unMixed[:, mask]
-#     # print(mask)
-#
-#     for i in range(num_columns-k):
-#         # Check RHD by dropping one of the remaining ICs in turn
-#         mask_iter = np.ones(num_columns-k, dtype=bool)
-#         mask_iter[i] = False
-#         invW_trunc_iter = invW_trunc[:, mask_iter]
-#         model = np.dot(invW_trunc_iter, unMixed_trunc[:, mask_iter].T)
-#         for j in range(num_columns):
-#             rhds[i] += rhd(model[j, :], Xw[j, :])
-#
-#     plt.figure(k+1)
-#     plt.plot(rhds)
-#     plt.xlabel('Component Index')
-#     plt.ylabel('Relative Hamming Distance')
-#     index = np.argmax(rhds)
-#     print(index)
-#     if isinstance(index, list):
-#         index = index[0]
-#     IC_order.append(index)
 
 rhds = np.zeros(num_series)
 for i in range(num_series):
@@ -122,14 +122,14 @@ for i in range(num_series):
     mask = np.ones(num_series, dtype=bool)
     mask[i] = False
     invW_trunc = mix_matrix.T[:, mask]
-    model = np.dot(invW_trunc, icas[:, mask].T)
+    model = np.dot(invW_trunc, icas[mask, :])
     for j in range(num_series):
         rhds[i] += rhd(model[j, :], calc_data[j, :])
 
-plt.figure(15)
-plt.plot(rhds/len(calc_data[:, 0]))
+plt.figure()
+plt.plot(rhds/num_series)
 plt.xlabel('Component Index')
 plt.ylabel('Relative Hamming Distance')
 
-plot_sto_vol(icas,None)
+plot_sto_vol(icas, None)
 

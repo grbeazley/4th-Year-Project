@@ -128,17 +128,17 @@ def is_normal(data):
     elif type(data) == list:
         # Data is a list
         kurt = abs(kurtosis(data))
+        kurts = kurt
 
     else:
+        kurts = None
         raise TypeError("Data Type not expected, please provide list or numpy array")
 
     # Check the smallest absolute kurtosis is far from 0
-    if kurt < 0.1:
-        raise Exception("Kurtosis of data is too close to Gaussian:", kurt)
-    elif kurt < 1:
-        raise Warning("Kurtosis is", kurt)
+    if kurt < 1:
+        print("Warning, kurtosis is", kurt)
 
-
+    return kurts
 
 if __name__ == "__main__":
     stem = "Data Sets\\FTSEICA\\"
