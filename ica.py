@@ -139,11 +139,21 @@ def rhd(model, true):
     #     IC_order.append(index)
 
 
+def adj_rhd(model, true):
+    # Function to calculate the adjusted Relative Hamming Distance (RHD)
+    # That is, the sign of the value of the time series is used not the sign of the difference
+    num_points = len(model)
+    true_r = comp_sign(true)
+    model_r = comp_sign(model)
+    squared_diff = np.sum(np.square(true_r - model_r))
+    return squared_diff / (num_points - 1)
+
+
 def whiten_data(data):
     # Whitens input m x N time series data
     data_centred, _ = centre(data)
-    data_whitened, _ = whiten(data_centred)
-    return data_whitened
+    data_whitened, whiten_matrix = whiten(data_centred)
+    return data_whitened, whiten_matrix
 
 
 def comp_ica(data):

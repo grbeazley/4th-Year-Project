@@ -127,13 +127,13 @@ if __name__ == "__main__":
     np.random.seed(0)
     num = 2443
     num_dims = 5
-    traj = gen_univ_sto_vol(num, a=0.99, mu=0, b=0.2, c=0.1)
-    traj2 = traj + 0.1*np.random.randn(num)
-    plt.scatter(np.arange(len(traj)), traj, s=2)
+    # traj = gen_univ_sto_vol(num, a=0.99, mu=0, b=0.2, c=0.1)
+    # traj2 = traj + 0.1*np.random.randn(num)
+    # plt.scatter(np.arange(len(traj)), traj, s=2)
 
-    # traj = gen_multi_sto_vol(num, num_dims, var_latent=0.2, var_observed=0.1)
-    # for j in range(num_dims):
-    #     plt.figure()
-    #     plt.scatter(np.arange(num), traj[j, :], s=2)
-    #     plt.figure()
-    #     plt.hist(traj[j, :], 50)
+    traj = gen_multi_sto_vol(num, num_dims, var_latent=0.2, var_observed=0.1)
+    for j in range(num_dims):
+        plt.figure()
+        plt.scatter(np.arange(num), traj[j, :], s=2)
+        plt.figure()
+        plt.hist(traj[j, :], 50)

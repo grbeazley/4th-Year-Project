@@ -1,5 +1,5 @@
 from utilities import load_data, log_returns, normalise, is_normal
-from ica import whiten_data, comp_ica, rhd
+from ica import whiten_data, comp_ica, rhd, adj_rhd
 from stochastic_volatility import gen_univ_sto_vol
 
 import pandas as pd
@@ -39,7 +39,7 @@ def recover(time_series):
 
 
 # Set the random seed for reproducibility
-np.random.seed(0)
+np.random.seed(10)
 
 # Boolean parameter for switching
 ftse = False
@@ -82,21 +82,24 @@ if ftse:
     # Compute centred data
     data_norm = normalise(data)
 
-    calc_data = whiten_data(normalise(data_returns))
+    calc_data, whiten_matrix = whiten_data(normalise(data_returns))
 
 else:
     # Generate truck and trailer series
     N = 2400
     prim_data = gen_univ_sto_vol(N, a=0.99, b=0.2, c=0.1)
-    data = np.array([prim_data, prim_data + 0.1*np.random.randn(N)])
+    data = np.array([prim_data,
+                     prim_data + 0.1*np.random.randn(N),
+                     prim_data + 0.1*np.random.randn(N),
+                     0.5*np.random.randn(N)])
 
-    num_series = 2
+    num_series = 4
 
     # Compute centred data
     data_norm = normalise(data)
 
     # Compute whitened data
-    data_whitened = whiten_data(data)
+    data_whitened, whiten_matrix = whiten_data(data)
 
     calc_data = data_whitened
 
@@ -117,19 +120,33 @@ for i in range(num_series):
 plt.show()
 
 rhds = np.zeros(num_series)
+adj_rhds = np.zeros(num_series)
+
 for i in range(num_series):
     # Check all RHD values for different combinations
     mask = np.ones(num_series, dtype=bool)
     mask[i] = False
-    invW_trunc = mix_matrix.T[:, mask]
+    invW_trunc = mix_matrix[:, mask]
     model = np.dot(invW_trunc, icas[mask, :])
+
+    # Un Whiten the result of the de-mixing
+    whiten_inv = np.linalg.inv(whiten_matrix)
+    model_recovered = np.dot(whiten_inv, model)
+
     for j in range(num_series):
-        rhds[i] += rhd(model[j, :], calc_data[j, :])
+        rhds[i] += rhd(model_recovered[j, :], data_norm[j, :])
+        adj_rhds[i] += adj_rhd(model_recovered[j, :], data_norm[j, :])
+
 
 plt.figure()
 plt.plot(rhds/num_series)
 plt.xlabel('Component Index')
 plt.ylabel('Relative Hamming Distance')
 
-plot_sto_vol(icas, None)
+plt.figure()
+plt.plot(adj_rhds/num_series)
+plt.xlabel('Component Index')
+plt.ylabel('Adjusted Relative Hamming Distance')
+
+# plot_sto_vol(icas, None)
 
