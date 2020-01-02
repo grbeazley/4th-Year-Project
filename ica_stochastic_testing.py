@@ -52,7 +52,7 @@ def plot_compare(model_data, true_data):
         title = str(series_idx) + ": Mean Squared Error: " \
                 + str(np.mean(np.square(true_data[series_idx, :] - model_data[series_idx, :])))
         plt.title(title)
-        plt.legend(['Model', ''])
+        plt.legend(['Model', 'True'])
 
 
 def recover(time_series, start_value=1):
@@ -68,7 +68,7 @@ def recover(time_series, start_value=1):
 np.random.seed(0)
 
 # Boolean parameter for switching
-ftse = True
+ftse = False
 
 if ftse:
     stem = "Data Sets\\FTSEICA_sto_vol\\"
@@ -175,27 +175,17 @@ plt.ylabel('Relative Hamming Distance')
 
 # plot_sto_vol(icas, None)
 
-if ftse:
-    # Compute model components
-    # model = np.dot(mix_matrix, icas)
 
-    # Invert the data whitening process
-    # whiten_inv = np.linalg.inv(whiten_matrix)
-    # model_recovered = np.dot(whiten_inv, model)
+# Plot Visual Comparison when most useful component removed
+i = np.argmax(rhds)
 
-    # Recover time series from ICs
-    # starts = data[:, 0]
-    # time_series = recover(model_recovered, starts)
+mask = np.ones(num_series, dtype=bool)
+mask[i] = False
+invW_trunc = mix_matrix[:, mask]
+model = np.dot(invW_trunc, icas[mask, :])
 
-    # Check all RHD values for different combinations
-    i = 6
-    mask = np.ones(num_series, dtype=bool)
-    mask[i] = False
-    invW_trunc = mix_matrix[:, mask]
-    model = np.dot(invW_trunc, icas[mask, :])
+# Un Whiten the result of the de-mixing
+whiten_inv = np.linalg.inv(whiten_matrix)
+model_recovered = np.dot(whiten_inv, model)
 
-    # Un Whiten the result of the de-mixing
-    whiten_inv = np.linalg.inv(whiten_matrix)
-    model_recovered = np.dot(whiten_inv, model)
-
-    plot_compare(model_recovered, data_reference)
+plot_compare(model_recovered, data_reference)
