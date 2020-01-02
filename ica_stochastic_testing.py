@@ -33,16 +33,42 @@ def plot_sto_vol(time_series, conv_type=None):
         plt.scatter(np.arange(len(ratio)), ratio, s=5)
 
 
-def recover(time_series):
+def plot_compare(model_data, true_data):
+    # Allows fast visual comparison between volatility plots
+    # Assumes input does not require conversion
+    if model_data.shape != true_data.shape:
+        print("Cannot Compare data with different shapes")
+        return
+
+    long_axis = np.argmax(model_data.shape)
+    short_axis = np.argmin(model_data.shape)
+    num_values = model_data.shape[long_axis]
+    idxs = np.arange(num_values)
+
+    for series_idx in range(model_data.shape[short_axis]):
+        plt.figure()
+        plt.scatter(idxs, model_data[series_idx, :], s=2)
+        plt.scatter(idxs, true_data[series_idx, :], s=2)
+        title = str(series_idx) + ": Mean Squared Error: " \
+                + str(np.mean(np.square(true_data[series_idx, :] - model_data[series_idx, :])))
+        plt.title(title)
+        plt.legend(['Model', ''])
+
+
+def recover(time_series, start_value=1):
+    # Inverts the log returns operation
     long_axis = np.argmax(time_series.shape)
-    return np.cumsum(time_series, axis=long_axis)
+    factors = np.exp(time_series)
+    # Set first value in series to the start value
+    factors[:, 0] = start_value
+    return np.cumprod(factors, axis=long_axis)
 
 
 # Set the random seed for reproducibility
-np.random.seed(10)
+np.random.seed(0)
 
 # Boolean parameter for switching
-ftse = False
+ftse = True
 
 if ftse:
     stem = "Data Sets\\FTSEICA_sto_vol\\"
@@ -76,33 +102,33 @@ if ftse:
     # Take the dates from the data frame for plotting
     dates = data_frame.values[0, :]
 
-    # Compute whitened data
-    data_whitened = whiten_data(data)
-
     # Compute centred data
-    data_norm = normalise(data)
+    data_norm = normalise(data_returns)
 
-    calc_data, whiten_matrix = whiten_data(normalise(data_returns))
+    # Store a reference variable for use in comparison
+    data_reference = data_norm
+
+    # Compute whitened data
+    calc_data, whiten_matrix = whiten_data(data_norm)
 
 else:
     # Generate truck and trailer series
     N = 2400
     prim_data = gen_univ_sto_vol(N, a=0.99, b=0.2, c=0.1)
     data = np.array([prim_data,
-                     prim_data + 0.1*np.random.randn(N),
-                     prim_data + 0.1*np.random.randn(N),
-                     0.5*np.random.randn(N)])
+                     prim_data + 0.1 * np.random.randn(N),
+                     prim_data + 0.1 * np.random.randn(N),
+                     0.5 * np.random.randn(N)])
 
     num_series = 4
 
     # Compute centred data
-    data_norm = normalise(data)
+    data_reference = normalise(data)
 
     # Compute whitened data
-    data_whitened, whiten_matrix = whiten_data(data)
+    data_whitened, whiten_matrix = whiten_data(data_reference)
 
     calc_data = data_whitened
-
 
 # Test Gaussianity of data
 kurts = is_normal(calc_data)
@@ -113,7 +139,7 @@ icas, mix_matrix = comp_ica(calc_data)
 plt.figure()
 num_points = len(icas[0, :])
 for i in range(num_series):
-    plt.subplot(num_series, 1, i+1)
+    plt.subplot(num_series, 1, i + 1)
     plt.scatter(np.arange(num_points), icas[i, :], s=1)
     plt.ylim([-10, 10])
 
@@ -134,19 +160,42 @@ for i in range(num_series):
     model_recovered = np.dot(whiten_inv, model)
 
     for j in range(num_series):
-        rhds[i] += rhd(model_recovered[j, :], data_norm[j, :])
-        adj_rhds[i] += adj_rhd(model_recovered[j, :], data_norm[j, :])
-
+        rhds[i] += rhd(model_recovered[j, :], data_reference[j, :])
+        adj_rhds[i] += adj_rhd(model_recovered[j, :], data_reference[j, :])
 
 plt.figure()
-plt.plot(rhds/num_series)
+plt.plot(rhds / num_series)
 plt.xlabel('Component Index')
 plt.ylabel('Relative Hamming Distance')
 
-plt.figure()
-plt.plot(adj_rhds/num_series)
-plt.xlabel('Component Index')
-plt.ylabel('Adjusted Relative Hamming Distance')
+# plt.figure()
+# plt.plot(adj_rhds/num_series)
+# plt.xlabel('Component Index')
+# plt.ylabel('Adjusted Relative Hamming Distance')
 
 # plot_sto_vol(icas, None)
 
+if ftse:
+    # Compute model components
+    # model = np.dot(mix_matrix, icas)
+
+    # Invert the data whitening process
+    # whiten_inv = np.linalg.inv(whiten_matrix)
+    # model_recovered = np.dot(whiten_inv, model)
+
+    # Recover time series from ICs
+    # starts = data[:, 0]
+    # time_series = recover(model_recovered, starts)
+
+    # Check all RHD values for different combinations
+    i = 6
+    mask = np.ones(num_series, dtype=bool)
+    mask[i] = False
+    invW_trunc = mix_matrix[:, mask]
+    model = np.dot(invW_trunc, icas[mask, :])
+
+    # Un Whiten the result of the de-mixing
+    whiten_inv = np.linalg.inv(whiten_matrix)
+    model_recovered = np.dot(whiten_inv, model)
+
+    plot_compare(model_recovered, data_reference)
