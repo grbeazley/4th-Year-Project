@@ -70,7 +70,7 @@ def gen_multi_sto_vol(N, m, **kwargs):
             # Set the latent noise variance matrix
             var_latent = kwargs['var_latent']
 
-            if type(var_latent) == int or float:
+            if type(var_latent) == (int or float):
                 # Been provided an integer so create diagonal matrix
                 var_latent = np.diag(np.ones(m)*var_latent)
             elif type(var_latent) == np.ndarray:
@@ -89,7 +89,7 @@ def gen_multi_sto_vol(N, m, **kwargs):
             # Set the observed process correlation matrix
             var_observed = kwargs['var_observed']
 
-            if type(var_observed) == int or float:
+            if type(var_observed) == (int or float):
                 # Been provided an integer so create diagonal matrix
                 var_observed = np.diag(np.ones(m)*var_observed)
             elif type(var_observed) == np.ndarray:
@@ -125,15 +125,31 @@ def gen_multi_sto_vol(N, m, **kwargs):
 
 if __name__ == "__main__":
     np.random.seed(0)
-    num = 2443
+    num = 2500
     num_dims = 5
     # traj = gen_univ_sto_vol(num, a=0.99, mu=0, b=0.2, c=0.1)
     # traj2 = traj + 0.1*np.random.randn(num)
     # plt.scatter(np.arange(len(traj)), traj, s=2)
 
-    traj = gen_multi_sto_vol(num, num_dims, var_latent=0.2, var_observed=0.1)
+    diag_val = 0.8
+    off_diag = 0.04
+    phi = np.array([[diag_val, off_diag, off_diag, off_diag, off_diag],
+                    [off_diag, diag_val, off_diag, off_diag, off_diag],
+                    [off_diag, off_diag, diag_val, off_diag, off_diag],
+                    [off_diag, off_diag, off_diag, diag_val, off_diag],
+                    [off_diag, off_diag, off_diag, off_diag, diag_val]])
+    diag_val = 0.2
+    off_diag = 0.01
+
+    sigma_eta = np.array([[diag_val, off_diag, off_diag, off_diag, off_diag],
+                          [off_diag, diag_val, off_diag, off_diag, off_diag],
+                          [off_diag, off_diag, diag_val, off_diag, off_diag],
+                          [off_diag, off_diag, off_diag, diag_val, off_diag],
+                          [off_diag, off_diag, off_diag, off_diag, diag_val]])
+
+    traj = gen_multi_sto_vol(num, num_dims, phi=phi, var_latent=sigma_eta, var_observed=0.1)
     for j in range(num_dims):
         plt.figure()
         plt.scatter(np.arange(num), traj[j, :], s=2)
-        plt.figure()
-        plt.hist(traj[j, :], 50)
+        # plt.figure()
+        # plt.hist(traj[j, :], 50)
