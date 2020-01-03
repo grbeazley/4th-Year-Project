@@ -119,26 +119,26 @@ elif multi:
 
     diag_val = 0.8
     off_diag = 0.04
-    phi = np.array( [[diag_val, off_diag, off_diag, off_diag, off_diag],
-                     [off_diag, diag_val, off_diag, off_diag, off_diag],
-                     [off_diag, off_diag, diag_val, off_diag, off_diag],
-                     [off_diag, off_diag, off_diag, diag_val, off_diag],
-                     [off_diag, off_diag, off_diag, off_diag, diag_val]] )
+    phi = np.array([[diag_val, off_diag, off_diag, off_diag, off_diag],
+                    [off_diag, diag_val, off_diag, off_diag, off_diag],
+                    [off_diag, off_diag, diag_val, off_diag, off_diag],
+                    [off_diag, off_diag, off_diag, diag_val, off_diag],
+                    [off_diag, off_diag, off_diag, off_diag, diag_val]])
     diag_val = 0.2
     off_diag = 0.01
 
-    sigma_eta = np.array( [[diag_val, off_diag, off_diag, off_diag, off_diag],
-                           [off_diag, diag_val, off_diag, off_diag, off_diag],
-                           [off_diag, off_diag, diag_val, off_diag, off_diag],
-                           [off_diag, off_diag, off_diag, diag_val, off_diag],
-                           [off_diag, off_diag, off_diag, off_diag, diag_val]] )
+    sigma_eta = np.array([[diag_val, off_diag, off_diag, off_diag, off_diag],
+                          [off_diag, diag_val, off_diag, off_diag, off_diag],
+                          [off_diag, off_diag, diag_val, off_diag, off_diag],
+                          [off_diag, off_diag, off_diag, diag_val, off_diag],
+                          [off_diag, off_diag, off_diag, off_diag, diag_val]])
 
-    data = gen_multi_sto_vol( num, num_series, phi=phi, var_latent=sigma_eta, var_observed=0.1)
+    data = gen_multi_sto_vol(num, num_series, phi=phi, var_latent=sigma_eta, var_observed=0.1)
     # Compute centred data
-    data_reference = normalise( data )
+    data_reference = normalise(data)
 
     # Compute whitened data
-    data_whitened, whiten_matrix = whiten_data( data_reference )
+    data_whitened, whiten_matrix = whiten_data(data_reference)
 
     calc_data = data_whitened
 
