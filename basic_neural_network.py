@@ -2,7 +2,7 @@
 # Implements a neural network with input size-hidden size-1 architecture and tanh activation function
 #
 
-from utilities import sym_sigmoid, dev_sym_sigmoid
+from utilities import sym_sigmoid, dev_sym_sigmoid, comp_sign
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -34,7 +34,7 @@ class NeuralNet:
         # Normalise input data
         self.data_from_file = self.normalise_data(self.data_from_file)
 
-        # Get true value as every 4th entry, starting from 12
+        # Get true value as every entry, starting from 0 + input dimension
         ground_truth = self.data_from_file[self.input_dim:]
 
         # Initialise empty vector
@@ -173,6 +173,17 @@ class NeuralNet:
         plt.plot(self.true)
         plt.plot(prdct_values)
         plt.legend(['True Values', 'Predicted Values'])
+
+    def calc_percent_correct(self):
+        # Calculates the percentage of times the correct sign is predicted
+        true_change = self.data[:, self.input_dim-1] - self.true
+        prdct_change = self.data[:, self.input_dim-1] - self.predict_sngle(sample='all')
+        true_dir = comp_sign(true_change)
+        prdct_dir = comp_sign(prdct_change)
+
+        # Look for where directions are the same (returns a tuple)
+        correct = np.where(true_dir == prdct_dir)
+        return len(correct[0])/len(true_change)
 
 
 if __name__ == "__main__":
