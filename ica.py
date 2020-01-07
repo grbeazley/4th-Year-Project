@@ -1,4 +1,5 @@
 import numpy as np
+from utilities import comp_sign
 
 """
 FIRST 5 FUNCTIONS: CODE TAKEN FROM https://github.com/akcarsten/Independent_Component_Analysis
@@ -78,26 +79,6 @@ def fastIca(signals, alpha=1, thresh=1e-8, iterations=5000):
 
         W[c, :] = w.T
     return W
-
-
-def comp_sign(r):
-    # Computes the sign of r
-    if isinstance(r, (list, np.ndarray)):
-        # Assume an array
-        neg_indexes = np.where(r < 0)
-        pos_indexes = np.where(r > 0)
-        r_out = np.zeros(len(r))
-        r_out[neg_indexes] = -1
-        r_out[pos_indexes] = 1
-        return r_out
-    else:
-        # Assume it is a single value
-        if r > 0:
-            return 1
-        if r == 0:
-            return 0
-        else:
-            return -1
 
 
 def rhd(model, true):

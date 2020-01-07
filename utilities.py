@@ -105,6 +105,7 @@ def load_data(stem, paths_dict, index_type='str'):
 
 def is_normal(data):
     # Useful for quickly checking if a data series is normal or not
+    kurts = None
     if type(data) == np.ndarray:
         # Data is a numpy array
         if data.ndim == 1:
@@ -139,6 +140,32 @@ def is_normal(data):
         print("Warning, kurtosis is", kurt)
 
     return kurts
+
+
+def comp_sign(r):
+    # Computes the sign of r
+    if isinstance(r, (list, np.ndarray)):
+        # Assume an array
+        neg_indexes = np.where(r < 0)
+        pos_indexes = np.where(r > 0)
+        r_out = np.zeros(len(r))
+        r_out[neg_indexes] = -1
+        r_out[pos_indexes] = 1
+        return r_out
+    else:
+        # Assume it is a single value
+        if r > 0:
+            return 1
+        if r == 0:
+            return 0
+        else:
+            return -1
+
+
+def scale_uni(lower, upper):
+    # Scales a [0,1) uniform random variable to any range
+    # Output is addition factor then division factor
+    return lower/(upper-lower), 1/(upper-lower)
 
 if __name__ == "__main__":
     stem = "Data Sets\\FTSEICA\\"
