@@ -70,7 +70,7 @@ def gen_multi_sto_vol(N, m, **kwargs):
             # Set the latent noise variance matrix
             var_latent = kwargs['var_latent']
 
-            if type(var_latent) == (int or float):
+            if (type(var_latent) == int) or (type(var_latent) == float):
                 # Been provided an integer so create diagonal matrix
                 var_latent = np.diag(np.ones(m)*var_latent)
             elif type(var_latent) == np.ndarray:
@@ -89,7 +89,7 @@ def gen_multi_sto_vol(N, m, **kwargs):
             # Set the observed process correlation matrix
             var_observed = kwargs['var_observed']
 
-            if type(var_observed) == (int or float):
+            if (type(var_observed) == int) or (type(var_observed) == float):
                 # Been provided an integer so create diagonal matrix
                 var_observed = np.diag(np.ones(m)*var_observed)
             elif type(var_observed) == np.ndarray:

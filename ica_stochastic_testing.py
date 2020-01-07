@@ -1,4 +1,4 @@
-from utilities import load_data, log_returns, normalise, is_normal
+from utilities import load_data, log_returns, normalise, is_normal, scale_uni
 from ica import whiten_data, comp_ica, rhd, adj_rhd
 from stochastic_volatility import gen_univ_sto_vol, gen_multi_sto_vol
 
@@ -117,23 +117,20 @@ elif multi:
     num = 2500
     num_series = 5
 
-    diag_val = 0.8
-    off_diag = 0.04
-    phi = np.array([[diag_val, off_diag, off_diag, off_diag, off_diag],
-                    [off_diag, diag_val, off_diag, off_diag, off_diag],
-                    [off_diag, off_diag, diag_val, off_diag, off_diag],
-                    [off_diag, off_diag, off_diag, diag_val, off_diag],
-                    [off_diag, off_diag, off_diag, off_diag, diag_val]])
-    diag_val = 0.2
-    off_diag = 0.01
+    # Generate pseudo random phi matrix around a prior
+    add_fac, mult_fac = scale_uni(0.8, 0.99)
+    diag_val_phi = (np.random.rand(5) + add_fac) / mult_fac
+    phi = np.diag(diag_val_phi)
+    phi = phi + np.random.randn(num_series, num_series) * (1-np.max(abs(diag_val_phi)))/5
 
-    sigma_eta = np.array([[diag_val, off_diag, off_diag, off_diag, off_diag],
-                          [off_diag, diag_val, off_diag, off_diag, off_diag],
-                          [off_diag, off_diag, diag_val, off_diag, off_diag],
-                          [off_diag, off_diag, off_diag, diag_val, off_diag],
-                          [off_diag, off_diag, off_diag, off_diag, diag_val]])
+    # Generate pseudo random sigma eta matrix around a prior
+    add_fac, mult_fac = scale_uni(0.3, 0.7)
+    diag_val_eta = (np.random.rand(5) + add_fac) / mult_fac
+    sigma_eta = np.diag(diag_val_eta)
+    low_tri = np.tril(np.random.randn(num_series, num_series) * (np.max(abs(diag_val_eta)))/5)
+    sigma_eta = sigma_eta + low_tri + low_tri.T - 2*np.diag(np.diag(low_tri))
 
-    data = gen_multi_sto_vol(num, num_series, phi=phi, var_latent=sigma_eta, var_observed=0.1)
+    data = gen_multi_sto_vol(num, num_series, phi=phi, var_latent=sigma_eta, var_observed=0.2)
     # Compute centred data
     data_reference = normalise(data)
 
