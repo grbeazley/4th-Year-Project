@@ -39,7 +39,27 @@ def whiten(x):
     return Xw, whiteM
 
 
-def fastIca(signals, alpha=1, thresh=1e-8, iterations=5000):
+def cf_tanh(w, alpha=1, derivative=False):
+    # Computes the contrast function, g for g = tanh(u)
+    if derivative:
+        # Derivative required so return g prime
+        return (1 - np.square(np.tanh(w))) * alpha
+    else:
+        # No derivative so return normal function
+        return np.tanh(w*alpha)
+
+
+def cf_cosh(w, alpha=1, derivative=False):
+    # Computes the contrast function, for g = log(cosh(u))
+    if derivative:
+        # Derivative required so return g prime
+        return np.tanh(alpha*w)
+    else:
+        # No derivative so return normal function
+        return np.log(np.cosh(alpha*w)) / alpha
+
+
+def fastIca(signals, alpha=1, thresh=1e-8, iterations=5000, contrast_func=cf_cosh):
     m, n = signals.shape
 
     # Initialize random weights
@@ -56,10 +76,10 @@ def fastIca(signals, alpha=1, thresh=1e-8, iterations=5000):
             ws = np.dot(w.T, signals)
 
             # Pass w*s into contrast function g
-            wg = np.tanh(ws * alpha).T
+            wg = contrast_func(ws, alpha).T
 
             # Pass w*s into g prime
-            wg_ = (1 - np.square(np.tanh(ws))) * alpha
+            wg_ = contrast_func(ws, alpha, derivative=True)
 
             # Update weights
             wNew = (signals * wg.T).mean(axis=1) - wg_.mean() * w.squeeze()

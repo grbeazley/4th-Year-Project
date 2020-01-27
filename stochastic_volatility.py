@@ -12,10 +12,10 @@ def gen_univ_sto_vol(N, **kwargs):
     :param kwargs: values of parameters for equation: a, b, c, mu
     """
 
-
-
-
-    x_prev = np.random.randn()
+    if 'x0' in kwargs:
+        x_prev = kwargs['x0']
+    else:
+        x_prev = np.random.randn()
     if 'a' in kwargs:
         a = kwargs['a']
     else:
@@ -124,10 +124,12 @@ def gen_multi_sto_vol(N, m, **kwargs):
 
 
 if __name__ == "__main__":
-    np.random.seed(0)
+    # np.random.seed(3)
     num = 2500
     num_dims = 5
-    # traj = gen_univ_sto_vol(num, a=0.99, mu=0, b=0.2, c=0.1)
+    traj = gen_univ_sto_vol(num, a=0.992, mu=0, b=0.098, c=0.007, x0=0.01830269160087)
+    plt.figure()
+    plt.scatter(np.arange(num), traj, s=2)
     # traj2 = traj + 0.1*np.random.randn(num)
     # plt.scatter(np.arange(len(traj)), traj, s=2)
 
@@ -140,16 +142,16 @@ if __name__ == "__main__":
                     [off_diag, off_diag, off_diag, off_diag, diag_val]])
     diag_val = 0.2
     off_diag = 0.01
-
+    #
     sigma_eta = np.array([[diag_val, off_diag, off_diag, off_diag, off_diag],
                           [off_diag, diag_val, off_diag, off_diag, off_diag],
                           [off_diag, off_diag, diag_val, off_diag, off_diag],
                           [off_diag, off_diag, off_diag, diag_val, off_diag],
                           [off_diag, off_diag, off_diag, off_diag, diag_val]])
 
-    traj = gen_multi_sto_vol(num, num_dims, phi=phi, var_latent=sigma_eta, var_observed=0.1)
-    for j in range(num_dims):
-        plt.figure()
-        plt.scatter(np.arange(num), traj[j, :], s=2)
-        # plt.figure()
-        # plt.hist(traj[j, :], 50)
+    # traj = gen_multi_sto_vol(num, num_dims, phi=0.99, var_latent=0.3, var_observed=0.1)
+    # for j in range(num_dims):
+    #     plt.figure()
+    #     plt.scatter(np.arange(num), traj[j, :], s=2)
+    #     plt.figure()
+    #     plt.hist(traj[j, :], 50)
