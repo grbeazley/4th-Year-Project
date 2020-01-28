@@ -2,7 +2,7 @@ import numpy as np
 from utilities import comp_sign
 
 """
-FIRST 5 FUNCTIONS: CODE TAKEN FROM https://github.com/akcarsten/Independent_Component_Analysis
+SOME FUNCTIONS: CODE TAKEN FROM https://github.com/akcarsten/Independent_Component_Analysis
 """
 
 
@@ -157,11 +157,11 @@ def whiten_data(data):
     return data_whitened, whiten_matrix
 
 
-def comp_ica(data):
+def comp_ica(data, algorithm=fastIca):
     # data is an m x N matrix where N is the number of data points and m is the number of series
     # Returns calculated independent components and the mixing matrix to recombine them
     # independent * mixing matrix = original signals
-    unmix_matrix = fastIca(data, alpha=1)
+    unmix_matrix = algorithm(data)
     mix_matrix = np.linalg.inv(unmix_matrix)
     latent_signals = np.dot(data.T, unmix_matrix.T).T
     return latent_signals, mix_matrix
