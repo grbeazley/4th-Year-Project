@@ -35,16 +35,27 @@ def gen_univ_sto_vol(N, **kwargs):
         mu = kwargs['mu']
     else:
         mu = 0
+    if 'return_hidden' in kwargs:
+        return_hidden = True
+    else:
+        return_hidden = False
 
-    trajectory = np.zeros(N)
+    trajectory_y = np.zeros(N+1)
+    trajectory_x = np.zeros(N+1)
+    trajectory_x[0] = x_prev
+    trajectory_y[0] = np.sqrt(c) * np.exp(x_prev/2) * np.random.randn()
 
     for i in range(N):
-        x = mu + a*(x_prev-mu) + b*np.random.randn()
-        y = c * np.exp(x/2) * np.random.randn()
+        x = mu + a*(x_prev-mu) + np.sqrt(b)*np.random.randn()
+        y = np.sqrt(c) * np.exp(x/2) * np.random.randn()
         x_prev = x
-        trajectory[i] = y
+        trajectory_y[i + 1] = y
+        trajectory_x[i + 1] = x
 
-    return trajectory
+    if return_hidden:
+        return trajectory_x, trajectory_y
+    else:
+        return trajectory_y
 
 
 def gen_multi_sto_vol(N, m, **kwargs):
