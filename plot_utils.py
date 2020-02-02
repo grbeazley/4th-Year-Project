@@ -1,8 +1,7 @@
+# File contains functions to assist in plotting data series of unusual forms
 import numpy as np
 from matplotlib import pyplot as plt
 from utilities import log_returns
-
-# File contains functions to assist in plotting
 
 
 def plot_sto_vol(time_series, conv_type=None):

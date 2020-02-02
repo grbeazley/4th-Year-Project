@@ -59,13 +59,18 @@ def cf_cosh(w, alpha=1, derivative=False):
         return np.log(np.cosh(alpha*w)) / alpha
 
 
-def fastIca(signals, alpha=1, thresh=1e-8, iterations=5000, contrast_func=cf_cosh):
+def cf_krts(w, derivative=False):
+    return w
+
+
+def fastICA(signals, alpha=1, thresh=1e-8, iterations=5000, contrast_func=cf_cosh):
     m, n = signals.shape
 
     # Initialize random weights
     W = np.random.rand(m, m)
 
     for c in range(m):
+        # Iterate through rows in W
         w = W[c, :].copy().reshape(m, 1)
         w = w / np.sqrt((w ** 2).sum())
 
@@ -76,7 +81,7 @@ def fastIca(signals, alpha=1, thresh=1e-8, iterations=5000, contrast_func=cf_cos
             ws = np.dot(w.T, signals)
 
             # Pass w*s into contrast function g
-            wg = contrast_func(ws, alpha).T
+            wg = contrast_func(ws, alpha, derivative=False).T
 
             # Pass w*s into g prime
             wg_ = contrast_func(ws, alpha, derivative=True)
@@ -98,7 +103,109 @@ def fastIca(signals, alpha=1, thresh=1e-8, iterations=5000, contrast_func=cf_cos
             i += 1
 
         W[c, :] = w.T
+
     return W
+
+
+def energyICA(signals_in, thresh=1e-8, iterations=5000, tau=1):
+    # Performs fastICA using a time lag as proposed by Hyvarinen 2001
+
+    m, n = signals_in.shape
+
+    assert tau < n, "tau too large"
+
+    signals_shifted = signals_in[:, :-tau]
+    signals = signals_in[:, tau:]
+
+    # Initialize random weights
+    W = np.random.rand(m, m)
+    M_all = np.zeros([n-1, m, m])
+
+    for i in range(n-1):
+        # Iterate over all shifted elements to create matrix M
+        M_all[i, :, :] = np.outer(signals[:, i], signals_shifted[:, i])
+
+    M_mean = M_all.mean(axis=0)
+
+    M = M_mean + M_mean.T
+
+    for c in range(m):
+        # Iterate through rows in W
+        w = W[c, :].copy().reshape(m, 1)
+
+        # Normalise w
+        w = w / np.sqrt((w ** 2).sum())
+
+        i = 0
+        lim = 100
+        while (lim > thresh) & (i < iterations):
+            # Dot product of weight and signal
+            ws = np.dot(w.T, signals)
+
+            # Dot product of weight and shifted signal
+            ws_shifted = np.dot(w.T, signals_shifted)
+
+            # Compute element-wise squared values
+            ws_shifted_squared = np.square(ws_shifted)
+            ws_squared = np.square(ws)
+
+            # Create terms in equation (7)
+            wNew_1 = (signals * ws * ws_shifted_squared).mean(axis=1)
+            wNew_2 = (signals_shifted * ws_squared * ws_shifted).mean(axis=1)
+            wNew_3 = -2*w - np.dot(M, w) * np.dot(np.dot(w.T, M), w)
+
+            # Update weights and normalise
+            wNew = wNew_1 + wNew_2 + wNew_3.squeeze()
+            wNew = wNew - np.dot(np.dot(wNew, W[:c].T), W[:c])
+
+            w_norm = wNew / np.sqrt((wNew ** 2).sum())
+
+            # Calculate limit condition
+            lim = np.abs(np.abs((w_norm * w).sum()) - 1)
+
+            # Update weights
+            w = w_norm
+
+            # Update counter
+            i += 1
+
+        W[c, :] = w.T
+
+    return W
+
+
+# def vsobi(data, contrast_func, u_i, derivative=False):
+#
+#
+#     return u_drvtv
+
+
+def demixing_optimiser(data, approximation, contrast_func=cf_krts):
+    # Computes the maximisation algorithm given in
+
+    num_components, n = data.shape
+
+    epsilon = 0.1
+    change = epsilon + 1
+    norm_demix_matrix_old = np.identity(num_components)
+
+    # TODO refactor this variable
+    t = np.zeros([num_components, num_components])
+
+    while change > epsilon:
+        for i in range(num_components):
+            # TODO may need transposing
+            # TODO refactor approximation
+            t[i, :] = approximation(data, contrast_func, norm_demix_matrix_old[i, :])
+
+        norm_demix_matrix_new = np.linalg.inv(np.matmul(t, t.T))
+
+        # Calculate the size of the change on this iteration to test convergence
+        change = np.linalg.norm(norm_demix_matrix_new - norm_demix_matrix_old)
+
+        norm_demix_matrix_old = norm_demix_matrix_new
+
+    return norm_demix_matrix_old
 
 
 def rhd(model, true):
@@ -157,7 +264,7 @@ def whiten_data(data):
     return data_whitened, whiten_matrix
 
 
-def comp_ica(data, algorithm=fastIca):
+def comp_ica(data, algorithm=energyICA):
     # data is an m x N matrix where N is the number of data points and m is the number of series
     # Returns calculated independent components and the mixing matrix to recombine them
     # independent * mixing matrix = original signals

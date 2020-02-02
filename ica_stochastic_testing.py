@@ -18,7 +18,7 @@ def recover(time_series, start_value=1):
 
 
 # Set the random seed for reproducibility
-np.random.seed(0)
+np.random.seed(1)
 
 # Boolean parameter for switching
 ftse = True
@@ -94,17 +94,35 @@ elif multi:
     calc_data = data_whitened
 
 else:
-    # Generate truck and trailer series
+    # Generate truck and trailer series, using one driving process and different observations
     N = 2400
-    prim_data = gen_univ_sto_vol(N, a=0.99, b=0.2, c=0.1)
-    # noise = 0.1 * np.random.randn(N)
+    # prim_data = gen_univ_sto_vol(N, a=0.99, b=0.2, c=0.1)
+    mu, a, b, c = 0, 0.99, 0.3, 0.05
     noise_var = 0.08
-    data = np.array([prim_data + noise_var * np.random.randn(N),
-                     prim_data + noise_var * np.random.randn(N),
-                     prim_data + noise_var * np.random.randn(N),
-                     0.5 * np.random.randn(N)])
+    x_prev = np.random.randn()
 
-    num_series = 4
+    trajectory_hidden = np.zeros(N)
+
+    # Create array of hidden state variables
+    for i in range(N):
+        x = mu + a*(x_prev-mu) + b*np.random.randn()
+        trajectory_hidden[i] = x
+        x_prev = x
+
+    def hidden_to_observed(trajectory, c):
+        N = len(trajectory)
+        trajectory_obs = np.zeros(N)
+        for j in range(N):
+            trajectory_obs[j] = c * np.exp(trajectory[j] / 2) * np.random.randn()
+
+        return trajectory_obs
+
+    data = np.array([hidden_to_observed(trajectory_hidden, c),
+                     hidden_to_observed(trajectory_hidden, c),
+                     hidden_to_observed(trajectory_hidden, c),
+                     ])
+
+    num_series = 3
 
     # Compute centred data
     data_reference = normalise(data)
