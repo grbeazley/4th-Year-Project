@@ -17,6 +17,8 @@ class ParticleFilter:
         self.params_history = np.zeros([3, self.num_iterations + 1])
         self.weights_history = np.zeros([self.num_particles, self.num_data + 1])
 
+        self.initial_sample = np.random.randn(self.num_particles)
+
         if 'x0' in kwargs:
             self.x_0 = kwargs['x0']
         else:
@@ -33,10 +35,10 @@ class ParticleFilter:
             self.c = kwargs['c']
         else:
             self.c = 1
-        if 'mu' in kwargs:
-            self.mu = kwargs['mu']
-        else:
-            self.mu = 0
+        # if 'mu' in kwargs:
+        #     self.mu = kwargs['mu']
+        # else:
+        #     self.mu = 0
         if 'true_hidden' in kwargs:
             self.true_hidden = kwargs['true_hidden']
             self.is_true_hidden = True
@@ -46,21 +48,20 @@ class ParticleFilter:
 
     def hidden_sample(self, x):
         noise = np.random.randn(len(x))
-        return x * self.a + np.sqrt(self.b) * noise
+        return (x * self.a) + (np.sqrt(self.b) * noise)
 
     def observation(self, x, y):
-        sigma = np.sqrt(self.c) * np.exp(x / 2)
-        log_obs = -np.log(sigma) - y ** 2 / (2 * sigma ** 2)
+        sigma_sqrd = self.c * np.exp(x)
+        log_obs = -0.5 * np.log(sigma_sqrd) - (y**2 / (2 * sigma_sqrd))
         return np.exp(log_obs)
 
     def filter_pass(self):
         # Run the particle filter once through the data
-        initial_sample = np.random.randn(self.num_particles)
 
-        initial_weights = self.observation(initial_sample, test_y[0])
+        initial_weights = self.observation(self.initial_sample, test_y[0])
         initial_weights = initial_weights / np.sum(initial_weights)
 
-        self.process_history[:, 0] = initial_sample
+        self.process_history[:, 0] = self.initial_sample
 
         weights = initial_weights
 
@@ -68,7 +69,7 @@ class ParticleFilter:
     
         particle_range = np.arange(self.num_particles)
     
-        weights_norm_constant = np.sum(initial_weights)
+        # weights_norm_constant = np.sum(initial_weights)
     
         for i in range(self.num_data):
             # Choose which particles to continue with using their weights
@@ -98,8 +99,10 @@ class ParticleFilter:
 
     def calibrate_model(self):
         # Run the filter pass numerous times to optimise a,b,c
+
         self.clear_history()
         self.params_history[:, 0] = [self.a, self.b, self.c]
+
         for i in tqdm(range(self.num_iterations)):
             # Run filter to populate process & weights history
             self.filter_pass()
@@ -108,7 +111,7 @@ class ParticleFilter:
 
             # Calculate a' & b'
             one_step_sum = np.sum(self.process_history[:, 1:] * self.process_history[:, :-1], axis=1)
-            sqrd_prdct = self.process_history * self.process_history
+            sqrd_prdct = np.square(self.process_history)
             sqrd_minus_one_sum = np.sum(sqrd_prdct[:, :-1], axis=1)
             sqrd_sum = np.sum(sqrd_prdct, axis=1)
 
@@ -144,13 +147,13 @@ class ParticleFilter:
         plt.plot(self.process_history.T, '--', linewidth=0.4)
 
     def plot_params(self):
-        plt.plot(particle_filter.params_history.T)
+        plt.plot(self.params_history.T)
         plt.legend(['a', 'b', 'c'])
 
 
-aa = 0.1
-bb = 2
-cc = 1
+aa = 0.6
+bb = 1
+cc = 0.5
 
 np.random.seed(0)
 
@@ -159,7 +162,8 @@ N = 200
 
 test_x, test_y = gen_univ_sto_vol(num_data, a=aa, b=bb, c=cc, return_hidden=True)
 
-particle_filter = ParticleFilter(test_y, num_particles=N, a=0.95, b=0.2, c=1, num_iterations=50)
+particle_filter = ParticleFilter(test_y, num_particles=N, a=0.95, b=0.5, c=0.1, num_iterations=10)
 # particle_filter.filter_pass()
 # particle_filter.plot_filter_pass()
 particle_filter.calibrate_model()
+particle_filter.plot_params()
