@@ -12,11 +12,9 @@ class ParticleFilter:
         self.num_particles = num_particles
         self.num_iterations = num_iterations
 
-        self.burn_in = 10
-
         self.true_obs = true_obs
         self.process_history = np.zeros([self.num_particles, self.num_data + 1])
-        self.params_history = np.zeros([3, self.num_data - self.burn_in])
+        self.params_history = np.zeros([3, self.num_iterations + 1])
         self.weights_history = np.zeros([self.num_particles, self.num_data + 1])
 
         if 'x0' in kwargs:
@@ -35,10 +33,10 @@ class ParticleFilter:
             self.c = kwargs['c']
         else:
             self.c = 1
-        # if 'mu' in kwargs:
-        #     self.mu = kwargs['mu']
-        # else:
-        #     self.mu = 0
+        if 'mu' in kwargs:
+            self.mu = kwargs['mu']
+        else:
+            self.mu = 0
         if 'true_hidden' in kwargs:
             self.true_hidden = kwargs['true_hidden']
             self.is_true_hidden = True
@@ -48,15 +46,15 @@ class ParticleFilter:
 
     def hidden_sample(self, x):
         noise = np.random.randn(len(x))
-        return (x * self.a) + (np.sqrt(self.b) * noise)
+        return x * self.a + np.sqrt(self.b) * noise
 
     def observation(self, x, y):
-        sigma_sqrd = self.c * np.exp(x)
-        log_obs = -0.5 * np.log(sigma_sqrd) - (y**2 / (2 * sigma_sqrd))
+        sigma = np.sqrt(self.c) * np.exp(x / 2)
+        log_obs = -np.log(sigma) - y ** 2 / (2 * sigma ** 2)
         return np.exp(log_obs)
 
-    def calibrate_model(self):
-        # Calibrate the model using online EM learning
+    def filter_pass(self):
+        # Run the particle filter once through the data
         initial_sample = np.random.randn(self.num_particles)
 
         initial_weights = self.observation(initial_sample, test_y[0])
@@ -67,29 +65,27 @@ class ParticleFilter:
         weights = initial_weights
 
         self.weights_history[:, 0] = initial_weights
-    
+
         particle_range = np.arange(self.num_particles)
 
-        self.params_history[:, 0] = [self.a, self.b, self.c]
-    
-        # weights_norm_constant = np.sum(initial_weights)
-    
-        for i in tqdm(range(self.num_data)):
+        weights_norm_constant = np.sum(initial_weights)
+
+        for i in range(self.num_data):
             # Choose which particles to continue with using their weights
             particle_indexes = np.random.choice(particle_range, size=self.num_particles, p=weights)
             Xn = self.process_history[particle_indexes, i]
 
             # Update the previous state history to be that of the chosen particles
             self.process_history[:, :i] = self.process_history[particle_indexes, :i]
-    
+
             # Advance the hidden state by one time step
             Xn_plus_1 = self.hidden_sample(Xn)
 
             # Store the new state in the process history
             self.process_history[:, i + 1] = Xn_plus_1
-    
+
             # Make the new weights the likelihood of observing the known y for a given Xn hidden state
-            new_particle_weights = self.observation(Xn_plus_1, test_y[i+1])
+            new_particle_weights = self.observation(Xn_plus_1, test_y[i + 1])
 
             # Store the updated weights in the weights history
             self.weights_history[:, i + 1] = new_particle_weights
@@ -100,44 +96,45 @@ class ParticleFilter:
             # Store the new normalised weights in the weights vector
             weights = self.weights_history[:, i + 1] / weights_norm_constant
 
-    # def calibrate_model(self):
-    #     # Run the filter pass numerous times to optimise a,b,c
-    #
-    #     self.clear_history()
+    def calibrate_model(self):
+        # Run the filter pass numerous times to optimise a,b,c
+        self.clear_history()
+        self.params_history[:, 0] = [self.a, self.b, self.c]
+        for i in tqdm(range(self.num_iterations)):
+            # Run filter to populate process & weights history
+            self.filter_pass()
+            final_weights = self.weights_history[:, -1]
+            final_weights_norm = final_weights / np.sum(final_weights)
 
-            if i > self.burn_in:
-                # Allow some burn in
+            # Calculate a' & b'
+            one_step_sum = np.sum(self.process_history[:, 1:] * self.process_history[:, :-1], axis=1)
+            sqrd_prdct = self.process_history * self.process_history
+            sqrd_minus_one_sum = np.sum(sqrd_prdct[:, :-1], axis=1)
+            sqrd_sum = np.sum(sqrd_prdct, axis=1)
 
-                # Calculate a' & b'
-                one_step_sum = np.sum(self.process_history[:, 1:i+1] * self.process_history[:, :i], axis=1)
-                sqrd_prdct = np.square(self.process_history)
-                sqrd_minus_one_sum = np.sum(sqrd_prdct[:, :-1], axis=1)
-                sqrd_sum = np.sum(sqrd_prdct, axis=1)
+            # Terms as labelled in notes
+            term1 = np.dot(final_weights_norm, one_step_sum)
+            term2 = np.dot(final_weights_norm, sqrd_minus_one_sum)
+            term3 = np.dot(final_weights_norm, sqrd_sum)
 
-                # Terms as labelled in notes
-                term1 = np.dot(weights, one_step_sum)
-                term2 = np.dot(weights, sqrd_minus_one_sum)
-                term3 = np.dot(weights, sqrd_sum)
+            self.a = term1 / term2
 
-                self.a = term1 / term2
+            self.b = (term3 - (term1 ** 2 / term2)) / (self.num_data + 1)
 
-                self.b = (term3 - (term1**2 / term2)) / (self.num_data + 1)
+            # Calculate c'
+            exp_prdct = np.square(self.true_obs) * np.exp(-self.process_history)
+            exp_sum = np.sum(exp_prdct, axis=1)
+            self.c = np.dot(final_weights_norm, exp_sum) / (self.num_data + 1)
 
-                # Calculate c'
-                exp_prdct = np.square(self.true_obs) * np.exp(-self.process_history)
-                exp_sum = np.sum(exp_prdct, axis=1)
-                self.c = np.dot(weights, exp_sum) / (self.num_data + 1)
+            # Store update to parameters
+            self.params_history[:, i + 1] = [self.a, self.b, self.c]
 
-                # Store update to parameters
-                self.params_history[:, i - self.burn_in] = [self.a, self.b, self.c]
-
-    # def clear_history(self, clear_params=False):
-    #     # Reset history vectors to all zeros
-    #     raise Exception("Don't want to call this atm")
-    #     if clear_params:
-    #         self.params_history = np.zeros([3, self.num_data + 1])
-    #     self.process_history = np.zeros([self.num_particles, self.num_data + 1])
-    #     self.weights_history = np.zeros([self.num_particles, self.num_data + 1])
+    def clear_history(self, clear_params=False):
+        # Reset history vectors to all zeros
+        if clear_params:
+            self.params_history = np.zeros([3, self.num_iterations + 1])
+        self.process_history = np.zeros([self.num_particles, self.num_data + 1])
+        self.weights_history = np.zeros([self.num_particles, self.num_data + 1])
 
     def plot_filter_pass(self):
         # Plot the result of the particle filter pass to check it worked correctly
@@ -147,23 +144,22 @@ class ParticleFilter:
         plt.plot(self.process_history.T, '--', linewidth=0.4)
 
     def plot_params(self):
-        plt.plot(self.params_history.T)
+        plt.plot(particle_filter.params_history.T)
         plt.legend(['a', 'b', 'c'])
 
 
-aa = 0.8
-bb = 1
-cc = 0.5
+aa = 0.1
+bb = 2
+cc = 1
 
 np.random.seed(0)
 
-num_data = 1000
-N = 500
+num_data = 500
+N = 200
 
 test_x, test_y = gen_univ_sto_vol(num_data, a=aa, b=bb, c=cc, return_hidden=True)
 
-particle_filter = ParticleFilter(test_y, num_particles=N, a=0.5, b=0.5, c=1, num_iterations=10)
+particle_filter = ParticleFilter(test_y, num_particles=N, a=0.95, b=0.2, c=1, num_iterations=50)
 # particle_filter.filter_pass()
 # particle_filter.plot_filter_pass()
 particle_filter.calibrate_model()
-particle_filter.plot_params()
