@@ -57,8 +57,7 @@ class ParticleFilter:
 
     def filter_pass(self):
         # Run the particle filter once through the data
-        initial_sample = np.random.randn(self.num_particles)
-        # np.sqrt(self.b / (1 - self.a**2)) *
+        initial_sample = np.sqrt(self.b / (1 - self.a**2)) * np.random.randn(self.num_particles)
         initial_weights = self.observation(initial_sample, test_y[0])
         weights = initial_weights / np.sum(initial_weights)
 
@@ -88,11 +87,10 @@ class ParticleFilter:
             # Store the updated weights in the weights history
             self.weights_history[:, i + 1] = new_particle_weights
 
-            # Calculate the normalisation constant
-            weights_norm_constant = np.sum(new_particle_weights)
-
             # Store the new normalised weights in the weights vector
-            weights = self.weights_history[:, i + 1] / weights_norm_constant
+            weights = new_particle_weights / np.sum(new_particle_weights)
+
+            # Update the expectation for the best guess
             self.estimate_history[i + 1] = np.dot(weights, self.particle_history[:, i + 1])
 
     def calibrate_model(self):
@@ -108,20 +106,27 @@ class ParticleFilter:
 
             # Compute the gradient of the log likelihood w.r.t. a
             sqrd_minus_one_prdct = self.particle_history[:, :-1] * self.particle_history[:, 1:]
-            temp = (sqrd_minus_one_prdct - (np.square(self.particle_history[:, :-1]) * self.a)) / self.b
-            dL_da = np.dot(np.sum(temp, axis=1), final_weights_norm)
+            summand_a = (sqrd_minus_one_prdct - (np.square(self.particle_history[:, :-1]) * self.a)) / self.b
+            dl_da = np.dot(np.sum(summand_a, axis=1), final_weights_norm)
 
             # Update parameter, ensuring it retains stationarity
-            self.a = max(0, min(self.a + self.learn_rate*dL_da, 0.999))
+            self.a = min(self.a + self.learn_rate*dl_da, 0.999)
 
-            self.a = term1 / term2
+            # Compute the gradient of the log likelihood w.r.t. b
+            sqrd_prdct = np.square(self.particle_history[:, 1:] - self.a * self.particle_history[:, :-1])
+            sum_b = np.sum(sqrd_prdct - self.b, axis=1) / 2*self.b**2
+            dl_db = np.dot(sum_b, final_weights_norm)
 
-            self.b = (term3 - (term1 ** 2 / term2)) / (self.num_data + 1)
+            # Update parameter b
+            self.b = self.b + self.learn_rate * 2.5 * dl_db
 
-            # Calculate c'
-            exp_prdct = np.square(self.true_obs) * np.exp(-self.process_history)
-            exp_sum = np.sum(exp_prdct, axis=1)
-            self.c = np.dot(final_weights_norm, exp_sum) / (self.num_data + 1)
+            # Compute the gradient of the log likelihood w.r.t. c
+            summand_c = np.square(self.true_obs) / (2 * self.c * np.exp(self.particle_history))
+            sum_c = np.sum(summand_c - self.c / 2, axis=1)
+            dl_dc = np.dot(sum_c, final_weights_norm)
+
+            # Update parameter c
+            self.c = self.c + self.learn_rate * dl_dc
 
             # Store update to parameters
             self.params_history[:, i + 1] = [self.a, self.b, self.c]
@@ -142,26 +147,34 @@ class ParticleFilter:
         plt.plot(self.particle_history.T, '--', linewidth=0.4)
         plt.plot(self.estimate_history)
 
-
     def plot_params(self):
         plt.figure()
-        plt.plot(particle_filter.params_history.T)
+        plt.plot(self.params_history.T)
         plt.legend(['a', 'b', 'c'])
 
 
-aa = 0.9
-bb = 1
-cc = 1
+if __name__ == "__main__":
+    # np.random.seed(0)
 
-np.random.seed(0)
+    aa = 0.9
+    bb = 0.5
+    cc = 0.5
 
-num_data = 100
-N = 80
+    num_data = 200
+    N = 200
 
-test_x, test_y = gen_univ_sto_vol(num_data, a=aa, b=bb, c=cc, return_hidden=True)
+    test_x, test_y = gen_univ_sto_vol(num_data, a=aa, b=bb, c=cc, return_hidden=True)
 
-particle_filter = ParticleFilter(test_y, num_particles=N, a=0.4, b=bb, c=cc, true_hidden=test_x, num_iterations=200)
-particle_filter.filter_pass()
-particle_filter.plot_filter_pass()
-particle_filter.calibrate_model()
-particle_filter.plot_params()
+    particle_filter = ParticleFilter(test_y,
+                                     num_particles=N,
+                                     a=0.7,
+                                     b=1,
+                                     c=1,
+                                     true_hidden=test_x,
+                                     num_iterations=250)
+
+    particle_filter.filter_pass()
+    particle_filter.plot_filter_pass()
+    particle_filter.calibrate_model()
+    particle_filter.plot_params()
+    particle_filter.plot_filter_pass()

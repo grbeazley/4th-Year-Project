@@ -34,8 +34,7 @@ def gen_univ_sto_vol(N, **kwargs):
     if 'x0' in kwargs:
         x_prev = kwargs['x0']
     else:
-        x_prev = np.random.randn()
-        #np.sqrt(b / (1 - a**2)) *
+        x_prev = np.sqrt(b / (1 - a**2)) * np.random.randn()
     if 'return_hidden' in kwargs:
         return_hidden = True
     else:
