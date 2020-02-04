@@ -86,7 +86,7 @@ class ParticleFilter:
             Xn = self.particle_history[particle_indexes, i]
 
             # Update the previous state history to be that of the chosen particles
-            self.particle_history[:, :i] = self.particle_history[particle_indexes, :i]
+            self.particle_history[:, :i + 1] = self.particle_history[particle_indexes, :i + 1]
     
             # Advance the hidden state by one time step
             Xn_plus_1 = self.hidden_sample(Xn)
@@ -170,7 +170,7 @@ cc = 0.5
 
 np.random.seed(0)
 
-num_data = 5000
+num_data = 2500
 N = 500
 
 test_x, test_y = gen_univ_sto_vol(num_data, a=aa, b=bb, c=cc, return_hidden=True)
