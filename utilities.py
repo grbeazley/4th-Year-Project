@@ -168,6 +168,16 @@ def scale_uni(lower, upper):
     # Output is addition factor then division factor
     return lower/(upper-lower), 1/(upper-lower)
 
+
+def moving_average(data, n=3):
+    # Calculates the n step moving average
+    # Modified for multi dimension
+    # https://stackoverflow.com/questions/14313510/how-to-calculate-moving-average-using-numpy/54628145
+    ret = np.cumsum(data, dtype=float, axis=1)
+    ret[:, n:] = ret[:, n:] - ret[:, :-n]
+    return ret[:, n - 1:] / n
+
+
 if __name__ == "__main__":
     stem = "Data Sets\\FTSEICA\\"
 

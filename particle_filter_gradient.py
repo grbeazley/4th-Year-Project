@@ -154,7 +154,7 @@ class ParticleFilter:
 
 
 if __name__ == "__main__":
-    # np.random.seed(0)
+    np.random.seed(0)
 
     aa = 0.9
     bb = 0.5

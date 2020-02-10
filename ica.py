@@ -107,7 +107,7 @@ def fastICA(signals, alpha=1, thresh=1e-8, iterations=5000, contrast_func=cf_cos
     return W
 
 
-def energyICA(signals_in, thresh=1e-8, iterations=5000, tau=1):
+def energyICA(signals_in, thresh=1e-9, iterations=10000, tau=1):
     # Performs fastICA using a time lag as proposed by Hyvarinen 2001
 
     m, n = signals_in.shape
@@ -119,9 +119,9 @@ def energyICA(signals_in, thresh=1e-8, iterations=5000, tau=1):
 
     # Initialize random weights
     W = np.random.rand(m, m)
-    M_all = np.zeros([n-1, m, m])
+    M_all = np.zeros([n-tau, m, m])
 
-    for i in range(n-1):
+    for i in range(n-tau):
         # Iterate over all shifted elements to create matrix M
         M_all[i, :, :] = np.outer(signals[:, i], signals_shifted[:, i])
 
@@ -174,6 +174,53 @@ def energyICA(signals_in, thresh=1e-8, iterations=5000, tau=1):
     return W
 
 
+def rhd(model, true):
+    # Function to calculate the Relative Hamming Distance (RHD)
+    num_points = len(model)
+    true_r = comp_sign(true[1:] - true[:-1])
+    model_r = comp_sign(model[1:] - model[:-1])
+    squared_diff = np.sum(np.square(true_r - model_r))
+    return squared_diff / (num_points - 1)
+
+
+def adj_rhd(model, true):
+    # Function to calculate the adjusted Relative Hamming Distance (RHD)
+    # That is, the sign of the value of the time series is used not the sign of the difference
+    num_points = len(model)
+    true_r = comp_sign(true)
+    model_r = comp_sign(model)
+    squared_diff = np.sum(np.square(true_r - model_r))
+    return squared_diff / (num_points - 1)
+
+
+def whiten_data(data):
+    # Whitens input m x N time series data
+    data_centred, _ = centre(data)
+    data_whitened, whiten_matrix = whiten(data_centred)
+    return data_whitened, whiten_matrix
+
+
+def comp_ica(data, algorithm="fastICA"):
+    # data is an m x N matrix where N is the number of data points and m is the number of series
+    # Returns calculated independent components and the mixing matrix to recombine them
+    # independent * mixing matrix = original signals
+
+    # Select algorithm to compute components with
+    if algorithm == "fastICA":
+        algo_func = fastICA
+    elif algorithm == "energyICA":
+        algo_func = energyICA
+    else:
+        algo_func = fastICA
+
+    unmix_matrix = algo_func(data)
+    mix_matrix = np.linalg.inv(unmix_matrix)
+    latent_signals = np.dot(data.T, unmix_matrix.T).T
+    return latent_signals, mix_matrix
+
+
+#################################################### DEPRECATED CODE ###################################################
+
 # def vsobi(data, contrast_func, u_i, derivative=False):
 #
 #
@@ -207,16 +254,7 @@ def demixing_optimiser(data, approximation, contrast_func=cf_krts):
 
     return norm_demix_matrix_old
 
-
-def rhd(model, true):
-    # Function to calculate the Relative Hamming Distance (RHD)
-    num_points = len(model)
-    true_r = comp_sign(true[1:] - true[:-1])
-    model_r = comp_sign(model[1:] - model[:-1])
-    squared_diff = np.sum(np.square(true_r - model_r))
-    return squared_diff / (num_points - 1)
-
-    ### RHD Iterative
+### RHD Iterative
     # IC_order = []
     # for k in range(num_columns):
     #     # Check all combinations, decreasing each time
@@ -245,30 +283,3 @@ def rhd(model, true):
     #     if isinstance(index, list):
     #         index = index[0]
     #     IC_order.append(index)
-
-
-def adj_rhd(model, true):
-    # Function to calculate the adjusted Relative Hamming Distance (RHD)
-    # That is, the sign of the value of the time series is used not the sign of the difference
-    num_points = len(model)
-    true_r = comp_sign(true)
-    model_r = comp_sign(model)
-    squared_diff = np.sum(np.square(true_r - model_r))
-    return squared_diff / (num_points - 1)
-
-
-def whiten_data(data):
-    # Whitens input m x N time series data
-    data_centred, _ = centre(data)
-    data_whitened, whiten_matrix = whiten(data_centred)
-    return data_whitened, whiten_matrix
-
-
-def comp_ica(data, algorithm=energyICA):
-    # data is an m x N matrix where N is the number of data points and m is the number of series
-    # Returns calculated independent components and the mixing matrix to recombine them
-    # independent * mixing matrix = original signals
-    unmix_matrix = algorithm(data)
-    mix_matrix = np.linalg.inv(unmix_matrix)
-    latent_signals = np.dot(data.T, unmix_matrix.T).T
-    return latent_signals, mix_matrix

@@ -53,15 +53,20 @@ def plot_compare(model_data, true_data):
         plt.legend(['Model', 'True'])
 
 
-def plot_components(series_data):
+def plot_components(series_data, title=''):
     # Creates figure with subplots for each of the m components in the m x N input data
-    plt.figure()
+    figure = plt.figure()
+    figure.suptitle(title)
     num_points = len(series_data[0, :])
     num_series = len(series_data[:, 0])
+    ymax = np.max(series_data)
+    ymin = np.min(series_data)
     for i in range(num_series):
+        if i == 0:
+            plt.title(title)
         plt.subplot(num_series, 1, i + 1)
         plt.scatter(np.arange(num_points), series_data[i, :], s=0.5)
-        plt.ylim([-5, 5])
+        plt.ylim([ymin, ymax])
         frame1 = plt.gca()
         if i != num_series - 1:
             frame1.axes.get_xaxis().set_ticks([])
