@@ -3,11 +3,14 @@ import pandas as pd
 from scipy.stats import kurtosis
 
 
-def normalise(data):
+def normalise(data, return_params=False):
     # Normalises a data series by subtracting mean and dividing by standard deviation
     mean = np.mean(data, axis=1, keepdims=True)
     stds = np.std(data, axis=1, keepdims=True)
-    return (data - mean) / stds
+    if return_params:
+        return (data - mean) / stds, mean, stds
+    else:
+        return (data - mean) / stds
 
 
 def sigmoid(x):

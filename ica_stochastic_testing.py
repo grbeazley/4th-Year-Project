@@ -23,10 +23,12 @@ np.random.seed(1)
 # Boolean parameter for switching
 ftse = False
 multi = False
-truck_trailer = True
+truck_trailer = False
+arma = True
 if ftse:
     multi = False
     truck_trailer = False
+    arma = False
 
 if ftse:
     stem = "Data Sets\\FTSEICA_sto_vol\\"
@@ -140,6 +142,48 @@ elif truck_trailer:
     data_whitened, whiten_matrix = whiten_data(data_reference)
 
     calc_data = data_reference
+
+elif arma:
+    N = 2400
+    # prim_data = gen_univ_sto_vol(N, a=0.99, b=0.2, c=0.1)
+    mu, a, b, c = 0, 0.99, 0.6, 0.1
+    noise_var = 0.08
+    num_series = 2
+
+    trajectory = np.zeros([num_series, N])
+
+    for k in range(num_series):
+        x_prev = np.random.randn()
+        for i in range(N):
+            x = mu + a*(x_prev-mu) + np.sqrt(b)*np.random.randn()
+            trajectory[k, i] = x
+            x_prev = x
+
+    plot_components(trajectory, 'True Series')
+
+    true_mix_matrix = np.array([[0.6, 0.5],
+                                [0.5, 0.6]])
+
+    # De-correlates the rows of the mixing matrix
+    true_mix_matrix[1, :] = true_mix_matrix[1, :] - np.dot(np.dot(true_mix_matrix[1, :], true_mix_matrix[0, :]),
+                                                           true_mix_matrix[0, :])
+
+    true_mix_matrix_norm = true_mix_matrix.T / np.sqrt((true_mix_matrix ** 2).sum(axis=1))
+
+    true_mix_matrix_norm = true_mix_matrix_norm.T
+
+    data = np.dot(true_mix_matrix_norm, trajectory)
+
+    # Compute centred data
+    data_reference = normalise(data)
+    algo = "fastICA"
+
+    # Compute whitened data
+    data_whitened, whiten_matrix = whiten_data(data_reference)
+
+    calc_data = data_whitened
+
+
 
 else:
     # Generate two separate series, using one driving process and different observations
