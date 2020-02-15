@@ -23,8 +23,8 @@ np.random.seed(1)
 # Boolean parameter for switching
 ftse = False
 multi = False
-truck_trailer = False
-arma = True
+truck_trailer = True
+arma = False
 if ftse:
     multi = False
     truck_trailer = False
@@ -135,13 +135,13 @@ elif truck_trailer:
 
     n_p = 1
     print(n_p)
-    data_reference = moving_average(data_reference, n=n_p)
+    # data_reference = moving_average(data_reference, n=n_p)
     algo = "energyICA"
 
     # Compute whitened data
     data_whitened, whiten_matrix = whiten_data(data_reference)
 
-    calc_data = data_reference
+    calc_data = data_whitened
 
 elif arma:
     N = 2400

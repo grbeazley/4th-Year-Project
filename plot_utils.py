@@ -4,6 +4,11 @@ from matplotlib import pyplot as plt
 from utilities import log_returns
 
 
+def plot(*args):
+    # Wrapper for plt.plot
+    plt.figure()
+    plt.plot(*args)
+
 def plot_sto_vol(time_series, conv_type=None):
     # Produces a series of plots of stochastic volatility data
     if len(time_series.shape) != 1:

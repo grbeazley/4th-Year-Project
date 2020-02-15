@@ -11,7 +11,6 @@ class ParticleFilter:
         self.num_data = len(true_obs) - 1
         self.num_particles = num_particles
         self.num_iterations = num_iterations
-        self.learn_rate = 0.001
 
         self.true_obs = true_obs
         self.particle_history = np.zeros([self.num_particles, self.num_data + 1])
@@ -45,6 +44,10 @@ class ParticleFilter:
         else:
             self.true_hidden = None
             self.is_true_hidden = False
+        if 'learn_rate' in kwargs:
+            self.learn_rate = kwargs['learn_rate']
+        else:
+            self.learn_rate = 0.0001
 
     def hidden_sample(self, x):
         noise = np.random.randn(len(x))
@@ -58,7 +61,7 @@ class ParticleFilter:
     def filter_pass(self):
         # Run the particle filter once through the data
         initial_sample = np.sqrt(self.b / (1 - self.a**2)) * np.random.randn(self.num_particles)
-        initial_weights = self.observation(initial_sample, test_y[0])
+        initial_weights = self.observation(initial_sample, self.true_obs[0])
         weights = initial_weights / np.sum(initial_weights)
 
         self.particle_history[:, 0] = initial_sample
@@ -110,7 +113,7 @@ class ParticleFilter:
             dl_da = np.dot(np.sum(summand_a, axis=1), final_weights_norm)
 
             # Update parameter, ensuring it retains stationarity
-            self.a = min(self.a + self.learn_rate*dl_da, 0.999)
+            self.a = min(self.a + self.learn_rate*dl_da, 0.9999)
 
             # Compute the gradient of the log likelihood w.r.t. b
             sqrd_prdct = np.square(self.particle_history[:, 1:] - self.a * self.particle_history[:, :-1])
@@ -118,7 +121,7 @@ class ParticleFilter:
             dl_db = np.dot(sum_b, final_weights_norm)
 
             # Update parameter b
-            self.b = self.b + self.learn_rate * 2.5 * dl_db
+            self.b = max(0.0001, self.b + self.learn_rate * dl_db * 2.5)
 
             # Compute the gradient of the log likelihood w.r.t. c
             summand_c = np.square(self.true_obs) / (2 * self.c * np.exp(self.particle_history))
@@ -126,7 +129,7 @@ class ParticleFilter:
             dl_dc = np.dot(sum_c, final_weights_norm)
 
             # Update parameter c
-            self.c = self.c + self.learn_rate * dl_dc
+            self.c = max(0.0001, self.c + self.learn_rate * dl_dc)
 
             # Store update to parameters
             self.params_history[:, i + 1] = [self.a, self.b, self.c]
@@ -157,21 +160,24 @@ if __name__ == "__main__":
     np.random.seed(0)
 
     aa = 0.9
-    bb = 0.5
-    cc = 0.5
+    bb = 1
+    cc = 1
 
     num_data = 200
     N = 200
 
     test_x, test_y = gen_univ_sto_vol(num_data, a=aa, b=bb, c=cc, return_hidden=True)
 
+    test_y = np.abs(test_y)
+
     particle_filter = ParticleFilter(test_y,
                                      num_particles=N,
-                                     a=0.7,
-                                     b=1,
-                                     c=1,
+                                     a=0.5,
+                                     b=0.5,
+                                     c=0.5,
                                      true_hidden=test_x,
-                                     num_iterations=250)
+                                     num_iterations=250,
+                                     learn_rate=0.0005)
 
     particle_filter.filter_pass()
     particle_filter.plot_filter_pass()

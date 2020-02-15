@@ -13,6 +13,12 @@ def normalise(data, return_params=False):
         return (data - mean) / stds
 
 
+def log_abs_norm(x, mu=0, sigma_sqrd=1):
+    norm_const = np.sqrt(2*np.pi*sigma_sqrd)
+    exponent = - np.square(np.exp(x) - mu)/2*sigma_sqrd
+    return np.exp(exponent + x) / norm_const
+
+
 def sigmoid(x):
     """
     Computes the sigmoid function for scalar or vector x
@@ -179,6 +185,25 @@ def moving_average(data, n=3):
     ret = np.cumsum(data, dtype=float, axis=1)
     ret[:, n:] = ret[:, n:] - ret[:, :-n]
     return ret[:, n - 1:] / n
+
+
+def reverse_moving_average(data, start_values, n=3):
+    # Undos the moving average calculation
+    # Need n - 1 initial values
+    assert len(start_values[0,:]) == n - 1
+
+    num_series = np.min(data.shape)
+    num_vals = np.max(data.shape)
+
+    recovered = np.zeros([num_series, num_vals + n - 1])
+
+    recovered[:, :n-1] = start_values
+
+    for i in range(num_series):
+        for idx, value in enumerate(data[i, :]):
+            recovered[i, idx + n - 1] = n*value - np.sum(recovered[i, idx:idx+(n-1)])
+
+    return recovered
 
 
 if __name__ == "__main__":
