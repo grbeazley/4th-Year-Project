@@ -62,13 +62,19 @@ def gen_multi_sto_vol(N, m, **kwargs):
     # Generates a multivariate (m x N) stochastic volatility model using the type specified
     # No leverage used
 
-    trajectory = np.zeros([m, N])
+    trajectory_y = np.zeros([m, N])
+    trajectory_h = np.zeros([m, N])
     zero_mean = np.zeros(m)
 
     if 'model_type' in kwargs:
         model_type = kwargs['model_type']
     else:
         model_type = 'basic'
+
+    if 'return_hidden' in kwargs:
+        return_hidden = True
+    else:
+        return_hidden = False
 
     if model_type == "basic":
         # Create a basic model with optional latent correlation
@@ -126,12 +132,16 @@ def gen_multi_sto_vol(N, m, **kwargs):
 
             # Update observed state and trajectory
             y = np.dot(obs_var, obs_noise)
-            trajectory[:, i] = y
+            trajectory_y[:, i] = y
+            trajectory_h[:, i] = h
             
             # Update previous time step
             h_prev = h
 
-    return trajectory
+    if return_hidden:
+        return trajectory_h, trajectory_y
+    else:
+        return trajectory_y
 
 
 if __name__ == "__main__":

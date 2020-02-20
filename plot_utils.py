@@ -9,6 +9,17 @@ def plot(*args):
     plt.figure()
     plt.plot(*args)
 
+
+def scatter(*args):
+    # Wrapper for the scatter function
+    plt.figure()
+    if len(args) == 1:
+        # Only data passed
+        plt.scatter(np.arange(len(args[0])), args, s=0.5)
+    else:
+        plt.scatter(*args, s=0.5)
+
+
 def plot_sto_vol(time_series, conv_type=None):
     # Produces a series of plots of stochastic volatility data
     if len(time_series.shape) != 1:

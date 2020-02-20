@@ -1,11 +1,11 @@
 import numpy as np
 from ica import whiten_data, comp_ica, rhd
 from plot_utils import plot_components, plot_compare
-from stochastic_volatility import gen_multi_sto_vol
+from stochastic_volatility import gen_multi_sto_vol, gen_univ_sto_vol
 from utilities import normalise, is_normal, scale_uni, moving_average
 from particle_filter_gradient import ParticleFilter
 
-np.random.seed(3)
+np.random.seed(0)
 
 # Create 2400 training and 100 test
 train = 2400
@@ -19,8 +19,8 @@ diag_val_phi = (np.random.rand(num_series) + add_fac) / mult_fac
 phi = np.diag(diag_val_phi)
 phi = phi + np.random.randn(num_series, num_series) * (1-np.max(diag_val_phi))/num_series
 
-phi = np.array([[0.85, 0.15],
-                [0.15, 0.85]])
+phi = np.array([[0.85, 0.13],
+                [0.13, 0.85]])
 
 # Generate pseudo random sigma eta matrix around a prior
 add_fac, mult_fac = scale_uni(0.3, 0.7)
@@ -29,14 +29,15 @@ sigma_eta = np.diag(diag_val_eta)
 low_tri = np.tril(np.random.randn(num_series, num_series) * (np.max(abs(diag_val_eta)))/num_series)
 sigma_eta = sigma_eta + low_tri + low_tri.T - 2*np.diag(np.diag(low_tri))
 
-sigma_eta = np.eye(2)
+sigma_eta = np.eye(2) * np.sqrt(0.6)
 
-data = gen_multi_sto_vol(num, num_series, phi=phi, var_latent=sigma_eta, var_observed=0.2)
+data_h, data_y = gen_multi_sto_vol(num, num_series, phi=phi, var_latent=sigma_eta, var_observed=1, return_hidden=True)
 
-plot_components(data, 'Input Data Raw')
+plot_components(data_y, 'Input Data Raw')
+plot_components(data_h, 'Input Hidden State')
 
-data_train = data[:, :train]
-data_test = data[:, train:]
+data_train = data_y[:, :train]
+data_test = data_y[:, train:]
 
 ######################### BIVARIATE ICA ###########################
 
@@ -101,15 +102,43 @@ model_scaled = (model_correlated * stds) + mean
 # Undo the log step (goes back to observed process)
 model_recovered = np.exp(model_scaled)
 
-particle_filter_1 = ParticleFilter(model_recovered[1, :],
+plot_components(model_recovered)
+
+particle_filter_1 = ParticleFilter(model_recovered[0, :],
                                    num_particles=N,
                                    a=0.7,
                                    b=0.9,
                                    c=0.9,
-                                   num_iterations=10)
+                                   num_iterations=150)
 
-particle_filter_1.filter_pass()
-particle_filter_1.plot_filter_pass()
+# particle_filter_1.filter_pass()
+# particle_filter_1.plot_filter_pass()
 particle_filter_1.calibrate_model()
 particle_filter_1.plot_params()
-particle_filter_1.plot_filter_pass()
+# particle_filter_1.plot_filter_pass()
+
+############################## Prediction ####################
+aa = 0.95
+bb = 0.8
+cc = 0.95
+
+data_test_prediction = gen_univ_sto_vol(100, a=aa, b=bb, c=cc, x0=model_scaled[0, -1])
+
+ic_complete = np.zeros(num)
+ic_complete[:train] = model_recovered[0, :]
+ic_complete[train:] = np.abs(data_test_prediction[1:])
+
+ic_complete_log = np.log(ic_complete)
+ic_complete_log_norm = (ic_complete_log - np.mean(ic_complete)) / np.std(ic_complete_log)
+
+mask = [True, False]
+invW_trunc = mix_matrix[:, mask]
+
+recovered_signals = np.outer(invW_trunc, ic_complete_log_norm)
+
+signals_correlated = np.dot(whiten_inv, recovered_signals)
+
+# model_scaled_complete = (model_correlated * stds) + mean
+
+# Undo the log step (goes back to observed process)
+recovered_signals_exp = np.exp(signals_correlated)
