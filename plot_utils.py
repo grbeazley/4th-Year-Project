@@ -11,13 +11,23 @@ def plot(*args):
 
 
 def scatter(*args):
-    # Wrapper for the scatter function
+    # Wrapper for the plt.scatter function
     plt.figure()
     if len(args) == 1:
         # Only data passed
         plt.scatter(np.arange(len(args[0])), args, s=0.5)
     else:
         plt.scatter(*args, s=0.5)
+
+
+def hist(*args):
+    # Wrapper for the plt.hist function
+    plt.figure()
+    if len(args) == 1:
+        # Only data passed
+        plt.hist(args, 100)
+    else:
+        plt.hist(args)
 
 
 def plot_sto_vol(time_series, conv_type=None):

@@ -1,11 +1,11 @@
 import numpy as np
 from ica import whiten_data, comp_ica, rhd
-from plot_utils import plot_components, plot_compare
+from plot_utils import plot_components, plot_compare, plot
 from stochastic_volatility import gen_multi_sto_vol, gen_univ_sto_vol
 from utilities import normalise, is_normal, scale_uni, moving_average
 from particle_filter_gradient import ParticleFilter
 
-np.random.seed(0)
+np.random.seed(1)
 
 # Create 2400 training and 100 test
 train = 2400
@@ -14,24 +14,29 @@ num = train + test
 num_series = 2
 
 # Generate pseudo random phi matrix around a prior
-add_fac, mult_fac = scale_uni(0.85, 0.95)
-diag_val_phi = (np.random.rand(num_series) + add_fac) / mult_fac
-phi = np.diag(diag_val_phi)
-phi = phi + np.random.randn(num_series, num_series) * (1-np.max(diag_val_phi))/num_series
+# add_fac, mult_fac = scale_uni(0.85, 0.95)
+# diag_val_phi = (np.random.rand(num_series) + add_fac) / mult_fac
+# phi = np.diag(diag_val_phi)
+# phi = phi + np.random.randn(num_series, num_series) * (1-np.max(diag_val_phi))/num_series
 
-phi = np.array([[0.85, 0.13],
-                [0.13, 0.85]])
+phi = np.array([[0.95, 0],
+                [0.95, 0]])
 
 # Generate pseudo random sigma eta matrix around a prior
-add_fac, mult_fac = scale_uni(0.3, 0.7)
-diag_val_eta = (np.random.rand(num_series) + add_fac) / mult_fac
-sigma_eta = np.diag(diag_val_eta)
-low_tri = np.tril(np.random.randn(num_series, num_series) * (np.max(abs(diag_val_eta)))/num_series)
-sigma_eta = sigma_eta + low_tri + low_tri.T - 2*np.diag(np.diag(low_tri))
+# add_fac, mult_fac = scale_uni(0.3, 0.7)
+# diag_val_eta = (np.random.rand(num_series) + add_fac) / mult_fac
+# sigma_eta = np.diag(diag_val_eta)
+# low_tri = np.tril(np.random.randn(num_series, num_series) * (np.max(abs(diag_val_eta)))/num_series)
+# sigma_eta = sigma_eta + low_tri + low_tri.T - 2*np.diag(np.diag(low_tri))
 
-sigma_eta = np.eye(2) * np.sqrt(0.6)
+sigma_eta = np.eye(2) #* np.sqrt(0.6)
 
-data_h, data_y = gen_multi_sto_vol(num, num_series, phi=phi, var_latent=sigma_eta, var_observed=1, return_hidden=True)
+data_h, data_y = gen_multi_sto_vol(num,
+                                   num_series,
+                                   phi=phi,
+                                   var_latent=sigma_eta,
+                                   var_observed=1,
+                                   return_hidden=True)
 
 plot_components(data_y, 'Input Data Raw')
 plot_components(data_h, 'Input Hidden State')
@@ -40,7 +45,7 @@ data_train = data_y[:, :train]
 data_test = data_y[:, train:]
 
 ######################### BIVARIATE ICA ###########################
-
+input("Press Enter to run ICA...")
 data_abs = np.abs(data_train)
 
 # Take the logs of the absolute values
@@ -88,9 +93,10 @@ for i in range(num_series):
     plot_compare(model_recovered, data_abs)
     mse[i] = np.mean(np.square(data_abs - model_recovered))
 
+plot(rhds)
 
 ############### Particle Filter Paramater Optimisation ################
-
+input("Press Enter to run particle filter...")
 N = 100
 
 # Un Whiten the result of the de-mixing
