@@ -30,6 +30,16 @@ def hist(*args):
         plt.hist(args)
 
 
+def hist_norm(*args):
+    # Wrapper for the plt.hist function
+    plt.figure()
+    if len(args) == 1:
+        # Only data passed
+        plt.hist(args, bins=100, density=True)
+    else:
+        plt.hist(args, density=True)
+
+
 def plot_sto_vol(time_series, conv_type=None):
     # Produces a series of plots of stochastic volatility data
     if len(time_series.shape) != 1:

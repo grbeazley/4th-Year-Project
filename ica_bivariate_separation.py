@@ -15,13 +15,13 @@ def hidden_to_observed(trajectory, cc):
 
 
 # Set the random seed for reproducibility
-np.random.seed(1)
+np.random.seed(0)
 
 # Generate truck and trailer series, using one driving process and different observations
 N = 2400
 num_series = 2
 
-mu, a, b, c = 0, 0.99, 0.6, 0.1
+mu, a, b, c = 0, 0.95, 1, 1
 x_prev = np.random.randn()
 
 trajectory_hidden = np.zeros(N)
@@ -40,19 +40,10 @@ data_abs = np.abs(data)
 
 # Take the logs of the absolute values
 data_hidden = np.log(data_abs)
-# mse_track = np.zeros(10)
-
-# for k in range(10):
-    # Compute the n point moving average
-    # av_points = k + 1
-    # print(av_points)
-    # data_hidden_av = moving_average(data_hidden, n=av_points)
-
-data_abs_short = data_abs
 
 # Normalise the data and store the parameters
 data_hidden_norm, mean, stds = normalise(data_hidden, return_params=True)
-data_hidden_norm = data_hidden
+
 # Compute whitened data
 data_whitened, whiten_matrix = whiten_data(data_hidden_norm)
 whiten_inv = np.linalg.inv(whiten_matrix)
@@ -90,16 +81,16 @@ for i in range(num_series):
     model_recovered = np.exp(model_scaled)
 
     for j in range(num_series):
-        rhds[i] += rhd(model_recovered[j, :], data_abs_short[j, :])
+        rhds[i] += rhd(model_recovered[j, :], data_abs[j, :])
 
-    # plot_compare(model_recovered, data_abs_short)
-    # mse[i] = np.mean(np.square(data_abs_short - model_recovered))
+    # plot_compare(model_recovered, data_abs)
+    # mse[i] = np.mean(np.square(data_abs - model_recovered))
 
     # mse_track[k] = min(mse)
 
 
 # plt.figure()
-# plt.plot(mse_track)
+# plt.plot(rhds)
 
 # plt.xlabel('Component Index')
 # plt.ylabel('Relative Hamming Distance')

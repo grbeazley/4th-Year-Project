@@ -91,7 +91,9 @@ def gen_multi_sto_vol(N, m, **kwargs):
                 # Been provided a single value so create diagonal matrix
                 var_latent = np.diag(np.ones(m)*var_latent)
             elif type(var_latent) == np.ndarray:
-                # Been provided a matrix
+                # Been provided a matrix, assume square
+                dims = var_latent.shape
+                assert dims[0] == dims[1]
                 pass
             else:
                 raise TypeError("Unexpected type passed for the var_latent")

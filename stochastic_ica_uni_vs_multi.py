@@ -5,13 +5,13 @@ from stochastic_volatility import gen_multi_sto_vol, gen_univ_sto_vol
 from utilities import normalise, is_normal, scale_uni, moving_average
 from particle_filter_gradient import ParticleFilter
 
-np.random.seed(1)
+np.random.seed(0)
 
 # Create 2400 training and 100 test
 train = 2400
 test = 100
 num = train + test
-num_series = 2
+num_series = 4
 
 # Generate pseudo random phi matrix around a prior
 # add_fac, mult_fac = scale_uni(0.85, 0.95)
@@ -19,8 +19,12 @@ num_series = 2
 # phi = np.diag(diag_val_phi)
 # phi = phi + np.random.randn(num_series, num_series) * (1-np.max(diag_val_phi))/num_series
 
-phi = np.array([[0.95, 0],
-                [0.95, 0]])
+phi = np.array([[1, 0, 0, 0],
+                [1, 0, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]], dtype=float)
+
+phi *= 0.93
 
 # Generate pseudo random sigma eta matrix around a prior
 # add_fac, mult_fac = scale_uni(0.3, 0.7)
@@ -29,13 +33,13 @@ phi = np.array([[0.95, 0],
 # low_tri = np.tril(np.random.randn(num_series, num_series) * (np.max(abs(diag_val_eta)))/num_series)
 # sigma_eta = sigma_eta + low_tri + low_tri.T - 2*np.diag(np.diag(low_tri))
 
-sigma_eta = np.eye(2) #* np.sqrt(0.6)
+sigma_eta = np.eye(num_series) #* np.sqrt(0.6)
 
 data_h, data_y = gen_multi_sto_vol(num,
                                    num_series,
                                    phi=phi,
                                    var_latent=sigma_eta,
-                                   var_observed=1,
+                                   var_observed=0.5,
                                    return_hidden=True)
 
 plot_components(data_y, 'Input Data Raw')
@@ -44,7 +48,7 @@ plot_components(data_h, 'Input Hidden State')
 data_train = data_y[:, :train]
 data_test = data_y[:, train:]
 
-######################### BIVARIATE ICA ###########################
+######################### ICA ###########################
 input("Press Enter to run ICA...")
 data_abs = np.abs(data_train)
 
@@ -90,9 +94,10 @@ for i in range(num_series):
     for j in range(num_series):
         rhds[i] += rhd(model_recovered[j, :], data_abs[j, :])
 
-    plot_compare(model_recovered, data_abs)
+    # plot_compare(model_recovered, data_abs)
     mse[i] = np.mean(np.square(data_abs - model_recovered))
 
+print(mse)
 plot(rhds)
 
 ############### Particle Filter Paramater Optimisation ################
