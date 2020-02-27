@@ -15,7 +15,7 @@ def scatter(*args):
     plt.figure()
     if len(args) == 1:
         # Only data passed
-        plt.scatter(np.arange(len(args[0])), args, s=0.5)
+        plt.scatter(np.arange(len(args[0])), *args, s=0.5)
     else:
         plt.scatter(*args, s=0.5)
 
@@ -25,19 +25,19 @@ def hist(*args):
     plt.figure()
     if len(args) == 1:
         # Only data passed
-        plt.hist(args, 100)
+        plt.hist(*args, bins=100)
     else:
-        plt.hist(args)
+        plt.hist(*args)
 
 
-def hist_norm(*args):
+def hist_norm(*args, **kwargs):
     # Wrapper for the plt.hist function
     plt.figure()
-    if len(args) == 1:
+    if (len(args) + len(kwargs)) == 1:
         # Only data passed
-        plt.hist(args, bins=100, density=True)
+        plt.hist(*args, **kwargs, bins=100, density=True)
     else:
-        plt.hist(args, density=True)
+        plt.hist(*args, **kwargs, density=True)
 
 
 def plot_sto_vol(time_series, conv_type=None):

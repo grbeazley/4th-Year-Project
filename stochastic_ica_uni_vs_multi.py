@@ -11,20 +11,20 @@ np.random.seed(0)
 train = 2400
 test = 100
 num = train + test
-num_series = 4
+num_series = 10
 
 # Generate pseudo random phi matrix around a prior
-# add_fac, mult_fac = scale_uni(0.85, 0.95)
-# diag_val_phi = (np.random.rand(num_series) + add_fac) / mult_fac
-# phi = np.diag(diag_val_phi)
-# phi = phi + np.random.randn(num_series, num_series) * (1-np.max(diag_val_phi))/num_series
+add_fac, mult_fac = scale_uni(0.87, 0.95)
+diag_val_phi = (np.random.rand(num_series) + add_fac) / mult_fac
+phi = np.diag(diag_val_phi)
+phi = phi + np.random.randn(num_series, num_series) * (1-np.max(diag_val_phi))/num_series
 
-phi = np.array([[1, 0, 0, 0],
-                [1, 0, 0, 0],
-                [0, 0, 1, 0],
-                [0, 0, 0, 1]], dtype=float)
+# phi = np.array([[1, 0, 0, 0],
+#                 [1, 0, 0, 0],
+#                 [0, 0, 1, 0],
+#                 [0, 0, 0, 1]], dtype=float)
 
-phi *= 0.93
+# phi *= 0.93
 
 # Generate pseudo random sigma eta matrix around a prior
 # add_fac, mult_fac = scale_uni(0.3, 0.7)
@@ -98,7 +98,7 @@ for i in range(num_series):
     mse[i] = np.mean(np.square(data_abs - model_recovered))
 
 print(mse)
-plot(rhds)
+plot(rhds/num_series)
 
 ############### Particle Filter Paramater Optimisation ################
 input("Press Enter to run particle filter...")
