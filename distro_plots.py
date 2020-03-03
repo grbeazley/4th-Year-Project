@@ -2,6 +2,7 @@ from plot_utils import *
 from matplotlib import pyplot as plt
 import numpy as np
 from pdfs import gamma_pdf, normal_pdf
+from utilities import is_normal
 
 np.random.seed(0)
 
@@ -39,6 +40,7 @@ mus = np.zeros(num_series)
 var_s = np.zeros(num_series)
 for i in range(num_series):
     m1 = np.dot(Q[i,:], e1)
+    # m1 = e1[i, :]
     mu = np.mean(m1)
     var = np.var(m1)
     mus[i] = mu
@@ -53,9 +55,10 @@ for i in range(num_series):
     #     plt.plot(q, power_folded_norm(q, alpha=alpha))
     # plt.legend(alphas)
 
-    hist_norm(m1, bins=100)
+    # hist_norm(m1, bins=100)
     # plt.plot(q, gamma_pdf(q, alpha=(mu**2/var), beta=(mu/var)))
-    plt.plot(q, normal_pdf(q, mu=mu, sigma_sqrd=var))
+    # plt.plot(q, normal_pdf(q, mu=mu, sigma_sqrd=var))
+
 # alphas = [3,4,5,6,7]
 #
 # for alpha in alphas:

@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from plot_utils import plot_components
+from plot_utils import plot_components, scatter, plot
+
 
 def gen_univ_sto_vol(N, **kwargs):
     """
@@ -143,14 +144,76 @@ def gen_multi_sto_vol(N, m, **kwargs):
     if return_hidden:
         return trajectory_h, trajectory_y
     else:
+        return
+
+
+def gen_univ_mrkv(N, **kwargs):
+    """
+    Generates a univariate markov model
+    X = a * (X_prev - mu) + b * standard normal
+    Y = X + d + c * standard normal
+
+    :param N: int number of points to generate
+    :param kwargs: values of parameters for equation: a, b, c, d, mu
+    """
+
+    if 'a' in kwargs:
+        a = kwargs['a']
+    else:
+        a = 0.99
+    if 'b' in kwargs:
+        b = kwargs['b']
+    else:
+        b = 1
+    if 'c' in kwargs:
+        c = kwargs['c']
+    else:
+        c = 1
+    if 'd' in kwargs:
+        d = kwargs['d']
+    else:
+        d = 1
+    if 'mu' in kwargs:
+        mu = kwargs['mu']
+    else:
+        mu = 0
+    if 'x0' in kwargs:
+        x_prev = kwargs['x0']
+    else:
+        x_prev = np.sqrt(b / (1 - a**2)) * np.random.randn()
+    if 'return_hidden' in kwargs:
+        return_hidden = True
+    else:
+        return_hidden = False
+
+    trajectory_y = np.zeros(N+1)
+    trajectory_x = np.zeros(N+1)
+    trajectory_x[0] = x_prev
+    trajectory_y[0] = x_prev + d + np.sqrt(c) * np.random.randn()
+
+    for i in range(N):
+        x = mu + a*(x_prev-mu) + np.sqrt(b)*np.random.randn()
+        y = x + d + np.sqrt(c) * np.random.randn()
+        x_prev = x
+        trajectory_y[i + 1] = y
+        trajectory_x[i + 1] = x
+
+    if return_hidden:
+        return trajectory_x, trajectory_y
+    else:
         return trajectory_y
 
 
 if __name__ == "__main__":
     # np.random.seed(3)
-    num = 2500
+    num = 1000
     num_dims = 2
     # traj = gen_univ_sto_vol(num, a=0.992, mu=0, b=0.098, c=0.007, x0=0.01830269160087)
+    aa = 0.95
+    bb = 0.1
+    cc = 0
+    dd = 0
+    traj_h, traj_y = gen_univ_mrkv(num, a=aa, mu=0, b=bb, c=cc, d=dd, return_hidden=True)
     # plt.figure()
     # plt.scatter(np.arange(num+1), traj, s=2)
     # traj2 = traj + 0.1*np.random.randn(num)
@@ -175,7 +238,12 @@ if __name__ == "__main__":
     phi = np.array([[0.495, 0.495],
                     [0.495, 0.495]])
 
-    traj_h, traj_y = gen_multi_sto_vol(num, num_dims, phi=phi, var_latent=1, var_observed=0.1, return_hidden=True)
+    # traj_h, traj_y = gen_multi_sto_vol(num, num_dims, phi=phi, var_latent=1, var_observed=0.1, return_hidden=True)
 
-    plot_components(traj_h)
-    plot_components(traj_y)
+    # plot_components(traj_h)
+    # plot_components(traj_y)
+
+    # scatter(traj_h)
+    # scatter(traj_y)
+    plt.plot(traj_h)
+    plt.plot(traj_y)
