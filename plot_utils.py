@@ -107,4 +107,4 @@ def plot_components(series_data, title=''):
         if i != num_series - 1:
             frame1.axes.get_xaxis().set_ticks([])
 
-    plt.show()
+    plt.draw()

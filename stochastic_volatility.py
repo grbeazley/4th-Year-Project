@@ -3,43 +3,24 @@ import matplotlib.pyplot as plt
 from plot_utils import plot_components, scatter, plot
 
 
-def gen_univ_sto_vol(N, **kwargs):
+def gen_univ_sto_vol(N, a=0.99, b=1.0, c=1.0, mu=0.0, return_hidden=False, **kwargs):
     """
     Generates a univariate stochastic volatility model without leverage
-    X = a * (X_prev - mu) + b * standard normal
-    Y = c * exp(X/2) * standard normal
+    X = a * (X_prev - mu) + sqrt(b) * standard normal
+    Y = sqrt(c) * exp(X/2) * standard normal
 
+    :param a: momentum term
+    :param b: variance of hidden noise
+    :param c: variance of observation noise
+    :param mu: mean of hidden process
+    :param return_hidden: bool to return hidden state
     :param N: int number of points to generate
-    :param kwargs: values of parameters for equation: a, b, c, mu
+    :param kwargs: initial state x0
     """
-
-    if 'a' in kwargs:
-        a = kwargs['a']
-    else:
-        a = 0.99
-
-    if 'b' in kwargs:
-        b = kwargs['b']
-    else:
-        b = 1
-
-    if 'c' in kwargs:
-        c = kwargs['c']
-    else:
-        c = 1
-
-    if 'mu' in kwargs:
-        mu = kwargs['mu']
-    else:
-        mu = 0
     if 'x0' in kwargs:
         x_prev = kwargs['x0']
     else:
         x_prev = np.sqrt(b / (1 - a**2)) * np.random.randn()
-    if 'return_hidden' in kwargs:
-        return_hidden = True
-    else:
-        return_hidden = False
 
     trajectory_y = np.zeros(N+1)
     trajectory_x = np.zeros(N+1)
@@ -147,44 +128,26 @@ def gen_multi_sto_vol(N, m, **kwargs):
         return
 
 
-def gen_univ_mrkv(N, **kwargs):
+def gen_univ_mrkv(N, a=0.99, b=1, c=1.23, d=0.0, mu=0.0, return_hidden=False, **kwargs):
     """
     Generates a univariate markov model
-    X = a * (X_prev - mu) + b * standard normal
-    Y = X + d + c * standard normal
+    X = a * (X_prev - mu) + sqrt(b) * standard normal
+    Y = X + d + sqrt(c) * standard normal
 
+    :param a: momentum term
+    :param b: variance of hidden noise
+    :param c: variance of observation noise
+    :param d: mean for observation process
+    :param mu: mean for hidden process
+    :param return_hidden: bool to return hidden state
     :param N: int number of points to generate
-    :param kwargs: values of parameters for equation: a, b, c, d, mu
+    :param kwargs: x0
     """
 
-    if 'a' in kwargs:
-        a = kwargs['a']
-    else:
-        a = 0.99
-    if 'b' in kwargs:
-        b = kwargs['b']
-    else:
-        b = 1
-    if 'c' in kwargs:
-        c = kwargs['c']
-    else:
-        c = 1
-    if 'd' in kwargs:
-        d = kwargs['d']
-    else:
-        d = 1
-    if 'mu' in kwargs:
-        mu = kwargs['mu']
-    else:
-        mu = 0
     if 'x0' in kwargs:
         x_prev = kwargs['x0']
     else:
         x_prev = np.sqrt(b / (1 - a**2)) * np.random.randn()
-    if 'return_hidden' in kwargs:
-        return_hidden = True
-    else:
-        return_hidden = False
 
     trajectory_y = np.zeros(N+1)
     trajectory_x = np.zeros(N+1)
@@ -204,16 +167,45 @@ def gen_univ_mrkv(N, **kwargs):
         return trajectory_y
 
 
+def predict_univ_mrkv(N, num_points, a=0.95, b=1.0, c=1.23, d=0.0, mu=0.0, return_hidden=False, **kwargs):
+    # Allows the generation of lots of possible processes from the same initial conditions
+
+    if 'x0' in kwargs:
+        x_prev = kwargs['x0']
+    else:
+        x_prev = np.sqrt(b / (1 - a**2)) * np.random.randn()
+
+    trajectory_y = np.zeros([N, num_points + 1])
+    trajectory_x = np.zeros([N, num_points + 1])
+    trajectory_x[:, 0] = x_prev
+    trajectory_y[:, 0] = x_prev + d + np.sqrt(c) * np.random.randn(N)
+
+    for i in range(num_points):
+        x = mu + a * (x_prev - mu) + np.sqrt(b) * np.random.randn(N)
+        y = x + d + np.sqrt(c) * np.random.randn(N)
+        x_prev = x
+        trajectory_y[:, i + 1] = y
+        trajectory_x[:, i + 1] = x
+
+    if return_hidden:
+        return trajectory_x, trajectory_y
+    else:
+        return trajectory_y
+
+
 if __name__ == "__main__":
     # np.random.seed(3)
-    num = 1000
+    num = 50
     num_dims = 2
     # traj = gen_univ_sto_vol(num, a=0.992, mu=0, b=0.098, c=0.007, x0=0.01830269160087)
+    # traj_h, traj_y = gen_univ_sto_vol(num, a=0.95, mu=0, b=0.3, c=0.01, return_hidden=True)
     aa = 0.95
     bb = 0.1
     cc = 0
     dd = 0
-    traj_h, traj_y = gen_univ_mrkv(num, a=aa, mu=0, b=bb, c=cc, d=dd, return_hidden=True)
+    # traj_h, traj_y = gen_univ_mrkv(num, a=aa, mu=0, b=bb, c=cc, d=dd, return_hidden=True)
+    traj_h, traj_y = predict_univ_mrkv(N=20, num_points=num, a=aa, mu=0, b=bb, return_hidden=True, x0=0.5)
+    # plt.figure()
     # plt.figure()
     # plt.scatter(np.arange(num+1), traj, s=2)
     # traj2 = traj + 0.1*np.random.randn(num)
@@ -245,5 +237,6 @@ if __name__ == "__main__":
 
     # scatter(traj_h)
     # scatter(traj_y)
-    plt.plot(traj_h)
-    plt.plot(traj_y)
+    # scatter(np.log(np.abs(traj_y)))
+    # plt.plot(traj_h)
+    # plt.plot(traj_y)

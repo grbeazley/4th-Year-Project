@@ -1,5 +1,5 @@
 from ica import whiten_data, comp_ica, rhd
-from plot_utils import plot_compare, plot_components
+from plot_utils import plot_compare, plot_components, plot
 from utilities import normalise, is_normal, moving_average, reverse_moving_average
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,10 +18,10 @@ def hidden_to_observed(trajectory, cc):
 np.random.seed(0)
 
 # Generate truck and trailer series, using one driving process and different observations
-N = 2400
+N = 1000
 num_series = 2
 
-mu, a, b, c = 0, 0.95, 1, 1
+mu, a, b, c = 0, 0.95, 0.1, 0.5
 x_prev = np.random.randn()
 
 trajectory_hidden = np.zeros(N)
@@ -86,8 +86,17 @@ for i in range(num_series):
     # plot_compare(model_recovered, data_abs)
     # mse[i] = np.mean(np.square(data_abs - model_recovered))
 
-    # mse_track[k] = min(mse)
+    # demix = np.linalg.inv(mix_matrix)
+    # Q = np.dot(whiten_matrix, demix)
+    #
+    # Q_norm = Q / np.linalg.norm(Q, ord=2, axis=1)
+    # print(Q_norm)
+    #
+    # Q_sum = np.sum(Q_norm, axis=1)
+    #
+    # diff[k] = min(np.sum(np.abs(Q_sum - [0, 1.414])), np.sum(np.abs(Q_sum - [1.414, 0])))
 
+# plot(bs, diff)
 
 # plt.figure()
 # plt.plot(rhds)

@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.special import gamma as gamma_function
+from scipy.stats import levy_stable
 
 
 def normal_pdf(x, mu, sigma_sqrd):
@@ -66,3 +67,8 @@ def gamma_pdf(x, alpha=1, beta=1):
     # Simple wrapper for the scipy gamma function
     top = beta**alpha * x**(alpha - 1) * np.exp(-beta * x)
     return top / gamma_function(alpha)
+
+
+def alpha_stable_pdf(x, alpha=1, beta=1, c=1, mu=0):
+    # Returns probability from a pdf
+    return levy_stable.pdf((x - mu)/c, alpha, beta)

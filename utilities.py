@@ -5,8 +5,14 @@ from scipy.stats import kurtosis
 
 def normalise(data, return_params=False):
     # Normalises a data series by subtracting mean and dividing by standard deviation
-    mean = np.mean(data, axis=1, keepdims=True)
-    stds = np.std(data, axis=1, keepdims=True)
+    if len(data.shape):
+        # Has only one dimension
+        mean = np.mean(data)
+        stds = np.std(data)
+    else:
+        mean = np.mean(data, axis=1, keepdims=True)
+        stds = np.std(data, axis=1, keepdims=True)
+
     if return_params:
         return (data - mean) / stds, mean, stds
     else:

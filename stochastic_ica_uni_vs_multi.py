@@ -1,30 +1,30 @@
 import numpy as np
 from ica import whiten_data, comp_ica, rhd
 from plot_utils import plot_components, plot_compare, plot
-from stochastic_volatility import gen_multi_sto_vol, gen_univ_sto_vol
-from utilities import normalise, is_normal, scale_uni, moving_average
-from particle_filter_gradient import ParticleFilter
+from stochastic_volatility import gen_multi_sto_vol, gen_univ_sto_vol, gen_univ_mrkv
+from utilities import normalise, is_normal, scale_uni
+from particle_filter_gradient_lg_nrml import ParticleFilter
 
 np.random.seed(0)
 
 # Create 2400 training and 100 test
-train = 2400
+train = 1000
 test = 100
 num = train + test
-num_series = 10
+num_series = 4
 
 # Generate pseudo random phi matrix around a prior
-add_fac, mult_fac = scale_uni(0.87, 0.95)
-diag_val_phi = (np.random.rand(num_series) + add_fac) / mult_fac
-phi = np.diag(diag_val_phi)
-phi = phi + np.random.randn(num_series, num_series) * (1-np.max(diag_val_phi))/num_series
+# add_fac, mult_fac = scale_uni(0.7, 0.9)
+# diag_val_phi = (np.random.rand(num_series) + add_fac) / mult_fac
+# phi = np.diag(diag_val_phi)
+# phi = phi + (np.random.rand(num_series, num_series) - 0.5) * 4 * ((1-np.max(diag_val_phi))/num_series)
 
-# phi = np.array([[1, 0, 0, 0],
-#                 [1, 0, 0, 0],
-#                 [0, 0, 1, 0],
-#                 [0, 0, 0, 1]], dtype=float)
+phi = np.array([[0.75, 0.25, 0, 0],
+                [0.25, 0.75, 0, 0],
+                [0.25, 0.25, 0.25, 0.25],
+                [0, 0, 0.75, 0.25]], dtype=float)
 
-# phi *= 0.93
+phi *= 0.93
 
 # Generate pseudo random sigma eta matrix around a prior
 # add_fac, mult_fac = scale_uni(0.3, 0.7)
@@ -42,11 +42,45 @@ data_h, data_y = gen_multi_sto_vol(num,
                                    var_observed=0.5,
                                    return_hidden=True)
 
+
+# def hidden_to_observed(trajectory, c_var):
+#     N = len(trajectory)
+#     trajectory_obs = np.zeros(N)
+#     for j in range(N):
+#         trajectory_obs[j] = np.sqrt(c_var) * np.exp(trajectory[j] / 2) * np.random.randn()
+#
+#     return trajectory_obs
+#
+#
+# # Set the random seed for reproducibility
+# np.random.seed(0)
+#
+# # Generate truck and trailer series, using one driving process and different observations
+# mu, a, b, c = 0, 0.95, 1, 1
+# x_prev = np.random.randn()
+#
+# trajectory_hidden = np.zeros(num)
+#
+# # Create array of hidden state variables
+# for i in range(num):
+#     x = mu + a * (x_prev - mu) + np.sqrt(b) * np.random.randn()
+#     trajectory_hidden[i] = x
+#     x_prev = x
+#
+# data_y = np.array([hidden_to_observed(trajectory_hidden, c),
+#                    hidden_to_observed(trajectory_hidden, c)])
+#
+# data_h = np.array([trajectory_hidden, trajectory_hidden])
+
+
 plot_components(data_y, 'Input Data Raw')
 plot_components(data_h, 'Input Hidden State')
 
 data_train = data_y[:, :train]
 data_test = data_y[:, train:]
+
+true_test = data_h[:, train]
+true_train = data_h[:, train:]
 
 ######################### ICA ###########################
 input("Press Enter to run ICA...")
@@ -62,7 +96,7 @@ data_hidden_av_norm, mean, stds = normalise(data_hidden, return_params=True)
 data_whitened, whiten_matrix = whiten_data(data_hidden_av_norm)
 whiten_inv = np.linalg.inv(whiten_matrix)
 
-plot_components(data_whitened, 'Input Data Whitened')
+# plot_components(data_whitened, 'Input Data Whitened')
 
 # Test Gaussianity of data
 kurtosis_values = is_normal(data_whitened)
@@ -102,54 +136,90 @@ plot(rhds/num_series)
 
 ############### Particle Filter Paramater Optimisation ################
 input("Press Enter to run particle filter...")
-N = 100
+N = 500
 
 # Un Whiten the result of the de-mixing
-model_correlated = np.dot(whiten_inv, ics)
+# model_correlated = np.dot(whiten_inv, ics)
 
 # Undo the normalisation
-model_scaled = (model_correlated * stds) + mean
+# model_scaled = (model_correlated * stds) + mean
 
 # Undo the log step (goes back to observed process)
-model_recovered = np.exp(model_scaled)
+# model_recovered = np.exp(model_scaled)
 
-plot_components(model_recovered)
+signal_idxs = [0]
+noise_idxs = [1,2,3]
+filters = {}
 
-particle_filter_1 = ParticleFilter(model_recovered[0, :],
-                                   num_particles=N,
-                                   a=0.7,
-                                   b=0.9,
-                                   c=0.9,
-                                   num_iterations=150)
 
-# particle_filter_1.filter_pass()
-# particle_filter_1.plot_filter_pass()
-particle_filter_1.calibrate_model()
-particle_filter_1.plot_params()
-# particle_filter_1.plot_filter_pass()
+for ica_idx in signal_idxs:
+    # Calibrate a model based on the training data
+
+    filters[ica_idx] = ParticleFilter(ics[ica_idx, :],
+                                      num_particles=N,
+                                      a=0.8,
+                                      b=0.5,
+                                      learn_rate=0.001,
+                                      num_iterations=15,
+                                      true_hidden=true_train[ica_idx, :])
+
+    # particle_filter_1.filter_pass()
+    # particle_filter_1.plot_filter_pass()
+    filters[ica_idx].calibrate_model()
+    filters[ica_idx].plot_params(ica_idx)
+
+    filters[ica_idx].adap_learn_rate = 0.0001
+    filters[ica_idx].calibrate_model(50)
+    filters[ica_idx].plot_params(ica_idx)
+    # particle_filter_1.plot_filter_pass()
+
 
 ############################## Prediction ####################
-aa = 0.95
-bb = 0.8
-cc = 0.95
+input("Press Enter to perform prediction...")
 
-data_test_prediction = gen_univ_sto_vol(100, a=aa, b=bb, c=cc, x0=model_scaled[0, -1])
+predicted_components = {}
+num_predict_steps = test
 
-ic_complete = np.zeros(num)
-ic_complete[:train] = model_recovered[0, :]
-ic_complete[train:] = np.abs(data_test_prediction[1:])
+for ica_idx in signal_idxs:
+    aa = float(input("Please Enter value for a"))
+    bb = float(input("Please Enter value for b"))
+    cc = 1.23
 
-ic_complete_log = np.log(ic_complete)
-ic_complete_log_norm = (ic_complete_log - np.mean(ic_complete)) / np.std(ic_complete_log)
+    x_prev = filters[ica_idx].estimate_history[-1]
 
-mask = [True, False]
-invW_trunc = mix_matrix[:, mask]
+    prediction = gen_univ_mrkv(test, a=aa, b=bb, c=cc, x0=x_prev)
 
-recovered_signals = np.outer(invW_trunc, ic_complete_log_norm)
+    ic_complete = np.zeros(num)
+    ic_complete[:train] = ics[ica_idx, :]
+    ic_complete[train:] = prediction[1:]
 
-signals_correlated = np.dot(whiten_inv, recovered_signals)
+    predicted_components[ica_idx] = ic_complete
 
-# model_scaled_complete = (model_correlated * stds) + mean
+for ica_idx in noise_idxs:
+    # Predict a noise process based on the statistics of the training data
+    noise = ics[ica_idx]
+    noise_mean, noise_std = np.mean(noise), np.var(noise)
+
+    # Assume noise can be approximated by a Gaussian
+    prediction = noise_mean + (np.random.randn(num_predict_steps) * noise_std)
+
+    ic_complete = np.zeros(num)
+    ic_complete[:train] = ics[ica_idx]
+    ic_complete[train:] = prediction
+
+    predicted_components[ica_idx] = ic_complete
+
+# Gather all components with predictions back into matrix
+ics_with_predictions = np.zeros([num_series, train + num_predict_steps])
+for i in range(num_series):
+    # Extract the ics from the dictionary
+    ics_with_predictions[i, :] = predicted_components[i]
+
+predicted_signals = np.dot(mix_matrix, ics_with_predictions)
+
+predicted_signals_correlated = np.dot(whiten_inv, predicted_signals)
+
+signals_scaled = (predicted_signals_correlated * stds) + mean
 
 # Undo the log step (goes back to observed process)
-recovered_signals_exp = np.exp(signals_correlated)
+recovered_signals_exp = np.exp(signals_scaled)
