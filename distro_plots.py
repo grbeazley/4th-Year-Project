@@ -1,14 +1,17 @@
 from plot_utils import *
 from matplotlib import pyplot as plt
 import numpy as np
-from pdfs import gamma_pdf, normal_pdf, alpha_stable_pdf
+from pdfs import gamma_pdf, normal_pdf, alpha_stable_pdf, qq_plot
+from levy import fit_levy
+from scipy.stats import levy_stable, gamma
 from utilities import is_normal
 
 np.random.seed(0)
 
-num_series = 4
+num_series = 5
+N = 100000
 
-x1 = np.random.randn(num_series, 100000)
+x1 = np.random.randn(num_series, N)
 # e1 = np.abs(x1).T**np.array([0.3, 0.3, -0.1, -0.9])
 # e1 = (np.abs(x1).T)**(0.49)
 e1 = np.log(np.abs(x1))
@@ -34,7 +37,10 @@ e1 = np.log(np.abs(x1))
 #        [-0.12253026, -0.12545013, -0.42234213,  0.65504456, -0.16029794,
 #         -0.09150524,  0.19845827, -0.03488978, -0.53717206,  0.08381032]])
 
-Q = np.array([0.28791489,  0.72549222,  0.09314578,  0.71501408])
+# Q = -np.array([0.28791489,  0.62549222,  0.09314578,  0.61501408, -0.28518374,
+#               0.12874914, -0.23426127,  0.16920323,  0.21908036, 0.15890213])
+
+Q = np.array([0.9291489,  0.1249222,  0.9314578,  0.01501408, -0.28518374])
 
 # m1 = np.prod(e1, axis=1)
 
@@ -49,31 +55,63 @@ var = np.var(m1)
 # var_s[i] = var
 # q = np.linspace(0, 4, 1000)
 q = np.linspace(-10, 5, 100)
-pdf_q = alpha_stable_pdf(-q, alpha=0.5, beta=1, mu=4.5, c=0.8)
+# pdf_q = alpha_stable_pdf(-q, alpha=0.5, beta=1, mu=4.5, c=0.8)
+
+# hist_norm(m1)
+# plt.plot(q, pdf_q)
+
+
+# Alpha Stable
+params, nelog = fit_levy(m1)
+
+print(params)
+
+pdf_q = alpha_stable_pdf(q, alpha=params.x[0], beta=params.x[1], mu=params.x[2], c=params.x[3])
 
 hist_norm(m1)
 plt.plot(q, pdf_q)
 
-    # alphas = [0.5, 0.6, 0.7, 0.8, 0.9]
-    # for alpha in alphas:
-    #     plt.plot(q, power_folded_norm(q, alpha=alpha))
-    # plt.legend(alphas)
+a1 = (levy_stable.rvs(params.x[0], params.x[1], size=100000) * params.x[3]) + params.x[2]
 
-    # hist_norm(m1, bins=100)
-    # plt.plot(q, gamma_pdf(q, alpha=(mu**2/var), beta=(mu/var)))
-    # plt.plot(q, normal_pdf(q, mu=mu, sigma_sqrd=var))
+qq_plot(a1, m1)
 
-# alphas = [3,4,5,6,7]
-#
-# for alpha in alphas:
-#     plt.plot(q, gamma_pdf(q, alpha=alpha, beta=12))
-# plt.legend(alphas)
-# plt.title("Comparison of different α values on Gamma Distribution")
-#
+
+# # Normal Distribution
+# mun = np.mean(m1)
+# stdn = np.std(m1)
+# n1 = (np.random.randn(100000) + mun) * stdn
 #
 # hist_norm(m1)
-# betas = np.arange(10, 18)
-# for beta in betas:
-#     plt.plot(q, gamma_pdf(q, alpha=7, beta=beta))
-# plt.legend(betas)
-# plt.title("Comparison of different β values on Gamma Distribution")
+# pdf_n_q = normal_pdf(q, mun, stdn)
+# plt.plot(q, pdf_n_q)
+#
+# qq_plot(n1, m1)
+
+
+# # Gamma Distribution
+# x = np.sum(np.exp(m1))
+# y = np.sum(np.exp(m1)*m1)
+# z = np.sum(m1) * np.sum(np.exp(m1))
+# N = 100000
+# k = (N*x) / ((N*y) - z)
+# theta = (N*y - z)/N**2
+#
+# print(k, theta)
+# r = np.linspace(0.001, 15, 1000)
+#
+# hist_norm(np.exp(m1), bins=1000)
+# plt.plot(r, gamma_pdf(r, k=k, theta=theta))
+# g1 = np.random.gamma(k, theta, 100000)
+# qq_plot(g1, np.exp(m1))
+
+# k=3
+# theta = 0.5
+# test = 0.5
+# g1 = np.random.gamma(k, theta, 100000) * test
+#
+# hist_norm(g1, bins=1000)
+# plt.plot(r, gamma_pdf(r, k=k, theta=test*theta))
+
+
+
+

@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import gamma as gamma_function
 from scipy.stats import levy_stable
-
+from matplotlib import pyplot as plt
 
 def normal_pdf(x, mu, sigma_sqrd):
     # Returns a normal pdf
@@ -63,12 +63,31 @@ def power_folded_norm_pdf(x, alpha=1, mu=0, sigma_sqrd=1):
     return folded_norm_pdf(x**(1/alpha), mu, sigma_sqrd) * scale_factor
 
 
-def gamma_pdf(x, alpha=1, beta=1):
+def _gamma_pdf(x, alpha=1.0, beta=1.0):
     # Simple wrapper for the scipy gamma function
     top = beta**alpha * x**(alpha - 1) * np.exp(-beta * x)
     return top / gamma_function(alpha)
 
 
+def gamma_pdf(x, k=1, theta=1):
+    # Wrapper to re-parameterize gamma
+    return _gamma_pdf(x, alpha=k, beta=1/theta)
+
+
 def alpha_stable_pdf(x, alpha=1, beta=1, c=1, mu=0):
     # Returns probability from a pdf
     return levy_stable.pdf((x - mu)/c, alpha, beta)
+
+
+def qq_plot(a_samples, b_samples):
+    # Makes a QQ plot of two sets of random samples
+    percentages = np.linspace(0, 100, 100)
+    quants_a = np.percentile(a_samples, percentages)
+    quants_b = np.percentile(b_samples, percentages)
+    plt.figure()
+    plt.plot(quants_a, quants_b, ls="", marker="o")
+
+    x = np.linspace(min(np.min(quants_a), np.min(quants_b)), max(np.max(quants_a), np.max(quants_b)))
+    plt.plot(x, x, color="k", ls="--")
+
+    plt.show()
