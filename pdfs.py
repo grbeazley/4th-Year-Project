@@ -3,6 +3,7 @@ from scipy.special import gamma as gamma_function
 from scipy.stats import levy_stable
 from matplotlib import pyplot as plt
 
+
 def normal_pdf(x, mu, sigma_sqrd):
     # Returns a normal pdf
     norm_const = np.sqrt(2 * np.pi * sigma_sqrd)
@@ -10,8 +11,8 @@ def normal_pdf(x, mu, sigma_sqrd):
 
 
 def log_abs_norm_pdf(x, mu=0, sigma_sqrd=1):
-    norm_const = np.sqrt(2*np.pi*sigma_sqrd)
-    exponent = - np.square(np.exp(x) - mu)/2*sigma_sqrd
+    norm_const = 2 * np.sqrt(2*np.pi*sigma_sqrd)
+    exponent = - np.square(np.exp(x) - mu)/(2*sigma_sqrd)
     return np.exp(exponent + x) / norm_const
 
 
@@ -59,7 +60,7 @@ def power_folded_norm_pdf(x, alpha=1, mu=0, sigma_sqrd=1):
     elif x < 0:
         raise Exception("Support not fully positive")
 
-    scale_factor = x**(-1 + 1/alpha) / alpha
+    scale_factor = x**(-1 + 1/alpha) / np.abs(alpha)
     return folded_norm_pdf(x**(1/alpha), mu, sigma_sqrd) * scale_factor
 
 

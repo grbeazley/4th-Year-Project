@@ -1,10 +1,21 @@
 from plot_utils import *
 from matplotlib import pyplot as plt
 import numpy as np
-from pdfs import gamma_pdf, normal_pdf, alpha_stable_pdf, qq_plot
+from pdfs import gamma_pdf, normal_pdf, alpha_stable_pdf, qq_plot, power_folded_norm_pdf
 from levy import fit_levy
 from scipy.stats import levy_stable, gamma
+from scipy.special import gamma as gamma_function
 from utilities import is_normal
+
+
+def mean_power_folded_norm(a, sigma=1):
+    return (2**((a+1)/2) * sigma**a * gamma_function((a+1)/2)) / np.sqrt(2*np.pi)
+
+
+def variance_power_folded_norm(a, sigma=1):
+    ex_2 = (2**(a+0.5) * sigma**(2*a) * gamma_function(a + 0.5)) / np.sqrt(2*np.pi)
+    return ex_2 #- mean_power_folded_norm(a, sigma)**2
+
 
 np.random.seed(0)
 
@@ -12,9 +23,30 @@ num_series = 5
 N = 100000
 
 x1 = np.random.randn(num_series, N)
-# e1 = np.abs(x1).T**np.array([0.3, 0.3, -0.1, -0.9])
+powers = np.array([0.3, 0.3, -0.1, -0.9, 0.7])
+# e1 = np.abs(x1).T**powers
 # e1 = (np.abs(x1).T)**(0.49)
 e1 = np.log(np.abs(x1))
+
+# for i in range(num_series):
+#     # hist_norm(e1[:, i])
+#     a = powers[i]
+#     # print(2**(a/2) * gamma_function((a+1)/2) / np.sqrt(2*np.pi))
+#     print(2*np.abs(a)/(np.abs(a) * np.sqrt(2*np.pi)))
+#     print(np.mean(e1[i]))
+#     print("-------------------")
+
+# qr = np.linspace(-1,5,50)
+# z = np.zeros(50)
+# zg = np.zeros(50)
+#
+# for i, a in enumerate(qr):
+#     z[i] = np.mean(np.abs(x1[0, :])**a)
+#     zg[i] = 2**((a-1)/2) * gamma_function((a+1)/2) / (np.sqrt(2*np.pi)/2)
+#
+# plt.figure()
+# plt.plot(qr, z)
+# plt.plot(qr, zg)
 
 # Q = np.array([[-0.53757991, -0.15268258, -0.24307302, -0.25496737,  0.46995185,
 #         -0.40650142, -0.01397579,  0.37495092,  0.04973428,  0.24378748],
@@ -41,39 +73,39 @@ e1 = np.log(np.abs(x1))
 #               0.12874914, -0.23426127,  0.16920323,  0.21908036, 0.15890213])
 
 Q = np.array([0.9291489,  0.1249222,  0.9314578,  0.01501408, -0.28518374])
-
+#
 # m1 = np.prod(e1, axis=1)
-
-mus = np.zeros(num_series)
-var_s = np.zeros(num_series)
-# for i in range(num_series):
+#
+# mus = np.zeros(num_series)
+# var_s = np.zeros(num_series)
+# # for i in range(num_series):
 m1 = np.dot(Q, e1)
 # m1 = e1[i, :]
-mu = np.mean(m1)
-var = np.var(m1)
+# mu = np.mean(m1)
+# var = np.var(m1)
 # mus[i] = mu
 # var_s[i] = var
 # q = np.linspace(0, 4, 1000)
-q = np.linspace(-10, 5, 100)
+# q = np.linspace(-10, 5, 100)
 # pdf_q = alpha_stable_pdf(-q, alpha=0.5, beta=1, mu=4.5, c=0.8)
 
 # hist_norm(m1)
 # plt.plot(q, pdf_q)
 
 
-# Alpha Stable
-params, nelog = fit_levy(m1)
-
-print(params)
-
-pdf_q = alpha_stable_pdf(q, alpha=params.x[0], beta=params.x[1], mu=params.x[2], c=params.x[3])
-
-hist_norm(m1)
-plt.plot(q, pdf_q)
-
-a1 = (levy_stable.rvs(params.x[0], params.x[1], size=100000) * params.x[3]) + params.x[2]
-
-qq_plot(a1, m1)
+# # Alpha Stable
+# params, nelog = fit_levy(m1)
+#
+# print(params)
+#
+# pdf_q = alpha_stable_pdf(q, alpha=params.x[0], beta=params.x[1], mu=params.x[2], c=params.x[3])
+#
+# hist_norm(m1)
+# plt.plot(q, pdf_q)
+#
+# a1 = (levy_stable.rvs(params.x[0], params.x[1], size=100000) * params.x[3]) + params.x[2]
+#
+# qq_plot(a1, m1)
 
 
 # # Normal Distribution
@@ -88,21 +120,41 @@ qq_plot(a1, m1)
 # qq_plot(n1, m1)
 
 
-# # Gamma Distribution
-# x = np.sum(np.exp(m1))
-# y = np.sum(np.exp(m1)*m1)
-# z = np.sum(m1) * np.sum(np.exp(m1))
-# N = 100000
-# k = (N*x) / ((N*y) - z)
-# theta = (N*y - z)/N**2
-#
-# print(k, theta)
-# r = np.linspace(0.001, 15, 1000)
-#
-# hist_norm(np.exp(m1), bins=1000)
-# plt.plot(r, gamma_pdf(r, k=k, theta=theta))
-# g1 = np.random.gamma(k, theta, 100000)
-# qq_plot(g1, np.exp(m1))
+# Gamma Distribution
+x = np.sum(np.exp(m1))
+y = np.sum(np.exp(m1)*m1)
+z = np.sum(m1) * np.sum(np.exp(m1))
+N = 100000
+k = (N*x) / ((N*y) - z)
+theta = (N*y - z)/N**2
+
+mean = 1
+var = 1
+
+for a in Q:
+    mean *= mean_power_folded_norm(a)
+    var *= variance_power_folded_norm(a)
+
+var_sub = var - mean**2
+
+theta_star = var_sub/mean
+k_star = mean**2 / var_sub
+
+print(k_star, theta_star)
+print("------------------")
+print(k, theta)
+r = np.linspace(0.001, 15, 1000)
+
+hist_norm(np.exp(m1), bins=1000)
+plt.plot(r, gamma_pdf(r, k=k, theta=theta))
+g1 = np.random.gamma(k, theta, 100000)
+qq_plot(g1, np.exp(m1))
+
+
+hist_norm(np.exp(m1), bins=1000)
+plt.plot(r, gamma_pdf(r, k=k_star, theta=theta_star))
+g1 = np.random.gamma(k_star, theta_star, 100000)
+qq_plot(g1, np.exp(m1))
 
 # k=3
 # theta = 0.5
