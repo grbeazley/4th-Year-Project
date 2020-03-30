@@ -11,9 +11,9 @@ def normal_pdf(x, mu, sigma_sqrd):
 
 
 def log_abs_norm_pdf(x, mu=0, sigma_sqrd=1):
-    norm_const = 2 * np.sqrt(2*np.pi*sigma_sqrd)
+    norm_const = np.sqrt(2*np.pi*sigma_sqrd)
     exponent = - np.square(np.exp(x) - mu)/(2*sigma_sqrd)
-    return np.exp(exponent + x) / norm_const
+    return 2 * np.exp(exponent + x) / norm_const
 
 
 def folded_norm_pdf(x, mu=0, sigma_sqrd=1):
