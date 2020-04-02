@@ -22,7 +22,7 @@ class ParticleFilter:
         self.theta = theta
         self.mu = mu
         self.learn_rate = learn_rate
-        self.num_params = 4
+        self.num_params = 2
 
         self.true_obs = true_obs
         self.particle_history = np.zeros([self.num_particles, self.num_data + 1])
@@ -103,7 +103,7 @@ class ParticleFilter:
             self.params_history = np.zeros([self.num_params, num_iterations + 1])
             self.learn_rate_history = np.zeros(num_iterations + 1)
 
-        self.params_history[:, 0] = [self.a, self.b, self.k, self.theta]
+        self.params_history[:, 0] = [self.a, self.b]
         self.learn_rate_history[0] = self.adap_learn_rate
 
         for i in tqdm(range(num_iterations)):
@@ -132,35 +132,8 @@ class ParticleFilter:
             # Update parameter b
             self.b = max(0.0001, self.b + self.adap_learn_rate * dl_db * 2.5)
 
-            gf_curr = gamma_function(self.k)
-            log_obs = np.log(self.true_obs)
-            exp_hid = np.exp(self.particle_history / 2)
-            exp_obs = np.exp(-self.true_obs / (self.theta*exp_hid))
-            pow_obs = self.true_obs ** (self.k - 1)
-
-            gf_deriv = gamma_deriv(0, self.k) * gf_curr
-
-            denom = (exp_hid * self.theta)**self.k * gf_curr
-
-            # Calculate update for k
-            summand_k = pow_obs * exp_obs * (log_obs*gf_curr - np.log(exp_hid * self.theta)*gf_deriv)
-            sum_k = np.sum(summand_k / (denom * gf_curr), axis=1)
-            dl_dk = np.dot(sum_k, final_weights_norm)
-
-            # Calculate update for theta
-            summand_th_lh = (self.true_obs / (self.theta*exp_hid)) / (self.theta**2)
-            summand_th_rh = self.k * self.theta**(self.k - 1) * pow_obs
-            sum_th = np.sum((summand_th_lh - summand_th_rh) * exp_obs / denom, axis=1)
-            dl_dtheta = np.dot(sum_th, final_weights_norm)
-
-            # Update parameter k
-            self.k = self.k + self.adap_learn_rate * dl_dk
-
-            # Update parameter theta
-            self.theta = self.theta + self.adap_learn_rate * dl_dtheta
-
             # Store update to parameters
-            self.params_history[:, i + 1] = [self.a, self.b, self.k, self.theta]
+            self.params_history[:, i + 1] = [self.a, self.b]
             self.learn_rate_history[i + 1] = self.adap_learn_rate
 
     def clear_history(self, clear_params=False):
@@ -182,7 +155,7 @@ class ParticleFilter:
     def plot_params(self, title=""):
         plt.figure()
         plt.plot(self.params_history.T)
-        plt.legend(['a', 'b', 'k', 'θ'])
+        plt.legend(['a', 'b'])
         plt.title("Parameter Evolution In Training for " + str(title))
 
     def plot_learn_rate(self):
@@ -192,12 +165,10 @@ class ParticleFilter:
 
 
 if __name__ == "__main__":
-    np.random.seed(0)
+    np.random.seed(1)
 
-    aa = 0.95
-    bb = 0.5
-    cc = 1.23
-    dd = -0.6
+    aa = 0.8
+    bb = 1
 
     kk = 0.7
     thth = 1
@@ -211,13 +182,13 @@ if __name__ == "__main__":
 
     particle_filter = ParticleFilter(test_y,
                                      num_particles=N,
-                                     a=0.95,
+                                     a=0.5,
                                      b=0.5,
                                      k=0.7,
                                      theta=1,
                                      true_hidden=test_x,
-                                     num_iterations=50,
-                                     learn_rate=0.0001,
+                                     num_iterations=500,
+                                     learn_rate=0.001,
                                      do_adaptive_learn=True)
 
     particle_filter.filter_pass()

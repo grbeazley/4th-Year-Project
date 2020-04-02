@@ -1,25 +1,17 @@
 from plot_utils import *
 from matplotlib import pyplot as plt
 import numpy as np
-from pdfs import gamma_pdf, normal_pdf, alpha_stable_pdf, qq_plot, power_folded_norm_pdf
+from pdfs import *
 from levy import fit_levy
 from scipy.stats import levy_stable, gamma
 from scipy.special import gamma as gamma_function
 from utilities import is_normal
 
-
-def mean_power_folded_norm(a, sigma=1):
-    return (2**((a+1)/2) * sigma**a * gamma_function((a+1)/2)) / np.sqrt(2*np.pi)
-
-
-def variance_power_folded_norm(a, sigma=1):
-    ex_2 = (2**(a+0.5) * sigma**(2*a) * gamma_function(a + 0.5)) / np.sqrt(2*np.pi)
-    return ex_2 #- mean_power_folded_norm(a, sigma)**2
-
+import scipy.integrate as integrate
 
 np.random.seed(0)
 
-num_series = 5
+num_series = 10
 N = 100000
 
 x1 = np.random.randn(num_series, N)
@@ -36,17 +28,29 @@ e1 = np.log(np.abs(x1))
 #     print(np.mean(e1[i]))
 #     print("-------------------")
 
-# qr = np.linspace(-1,5,50)
-# z = np.zeros(50)
-# zg = np.zeros(50)
+# Na = 50
+# qr = np.linspace(-0.2,1,Na)
+# z = np.zeros(Na)
+# zg = np.zeros(Na)
+# zq = np.zeros(Na)
+# zp = np.zeros(Na)
+#
 #
 # for i, a in enumerate(qr):
-#     z[i] = np.mean(np.abs(x1[0, :])**a)
-#     zg[i] = 2**((a-1)/2) * gamma_function((a+1)/2) / (np.sqrt(2*np.pi)/2)
+#     # z[i] = np.mean(np.abs(x1[0, :])**a)
+#     # zg[i] = mean_power_folded_norm(a)
+#     mean = mean_power_folded_norm(a)
+#     var = variance_power_folded_norm(a) - mean_power_folded_norm(0.5) ** 2
+#     zq[i] = mean * np.log((var + mean**2)/mean)
+#
+#     zp[i] = integrate.quad(xlnx_func, 0, np.inf, args=(a,))[0]
+#
 #
 # plt.figure()
-# plt.plot(qr, z)
-# plt.plot(qr, zg)
+# # plt.plot(qr, z)
+# # plt.plot(qr, zg)
+# plt.plot(qr, zq)
+# plt.plot(qr, zp)
 
 # Q = np.array([[-0.53757991, -0.15268258, -0.24307302, -0.25496737,  0.46995185,
 #         -0.40650142, -0.01397579,  0.37495092,  0.04973428,  0.24378748],
@@ -69,10 +73,12 @@ e1 = np.log(np.abs(x1))
 #        [-0.12253026, -0.12545013, -0.42234213,  0.65504456, -0.16029794,
 #         -0.09150524,  0.19845827, -0.03488978, -0.53717206,  0.08381032]])
 
-# Q = -np.array([0.28791489,  0.62549222,  0.09314578,  0.61501408, -0.28518374,
-#               0.12874914, -0.23426127,  0.16920323,  0.21908036, 0.15890213])
+Q = np.array([0.28791489,  0.62549222,  0.09314578,  0.61501408, -0.28518374,
+              0.12874914, -0.23426127,  0.16920323,  0.21908036, 0.15890213])
 
-Q = np.array([0.9291489,  0.1249222,  0.9314578,  0.01501408, -0.28518374])
+# Q = np.array([0.9291489,  0.1249222,  0.9314578,  0.01501408, -0.28518374])
+
+# Q = np.array([0.28791489,  0.62549222,  0.09314578,  0.61501408, -0.28518374])
 #
 # m1 = np.prod(e1, axis=1)
 #
@@ -131,29 +137,37 @@ theta = (N*y - z)/N**2
 mean = 1
 var = 1
 
-for a in Q:
-    mean *= mean_power_folded_norm(a)
-    var *= variance_power_folded_norm(a)
+means = np.zeros(num_series)
+xlnxs = np.zeros(num_series)
 
+for i, a in enumerate(Q):
+    means[i] = mean_power_folded_norm(a)
+    var *= _variance_power_folded_norm(a)
+
+mean = np.prod(means)
 var_sub = var - mean**2
 
 theta_star = var_sub/mean
 k_star = mean**2 / var_sub
 
+k_star_hat, theta_star_hat = comp_k_theta_from_alphas(Q)
+
 print(k_star, theta_star)
 print("------------------")
+print(k_star_hat, theta_star_hat)
+print("------------------")
 print(k, theta)
-r = np.linspace(0.001, 15, 1000)
+r = np.linspace(0.001, 5, 1000)
 
 hist_norm(np.exp(m1), bins=1000)
 plt.plot(r, gamma_pdf(r, k=k, theta=theta))
-g1 = np.random.gamma(k, theta, 100000)
+g1 = np.random.gamma(k, theta, 100000*num_series)
 qq_plot(g1, np.exp(m1))
 
 
 hist_norm(np.exp(m1), bins=1000)
-plt.plot(r, gamma_pdf(r, k=k_star, theta=theta_star))
-g1 = np.random.gamma(k_star, theta_star, 100000)
+plt.plot(r, gamma_pdf(r, k=k_star_hat, theta=theta_star_hat))
+g1 = np.random.gamma(k_star_hat, theta_star_hat, 100000*num_series)
 qq_plot(g1, np.exp(m1))
 
 # k=3

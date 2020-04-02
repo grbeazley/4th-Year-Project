@@ -2,6 +2,7 @@ import numpy as np
 from scipy.special import gamma as gamma_function
 from scipy.stats import levy_stable
 from matplotlib import pyplot as plt
+import scipy.integrate as integrate
 
 
 def normal_pdf(x, mu, sigma_sqrd):
@@ -73,6 +74,72 @@ def _gamma_pdf(x, alpha=1.0, beta=1.0):
 def gamma_pdf(x, k=1, theta=1):
     # Wrapper to re-parameterize gamma
     return _gamma_pdf(x, alpha=k, beta=1/theta)
+
+
+def mean_power_folded_norm(a, sigma=1):
+    # Calculates the mean of a power folded normal distribution
+    return (2**((a+1)/2) * sigma**a * gamma_function((a+1)/2)) / np.sqrt(2*np.pi)
+
+
+def variance_power_folded_norm(a, sigma=1):
+    # Calculates the variance of a power folded normal distribution
+    ex_2 = _variance_power_folded_norm(a, sigma)
+    return ex_2 - mean_power_folded_norm(a, sigma)**2
+
+
+def _variance_power_folded_norm(a, sigma=1):
+    # Calculates E[X^2] where X ~ power normal distribution (a)
+    return (2**(a+0.5) * sigma**(2*a) * gamma_function(a + 0.5)) / np.sqrt(2*np.pi)
+
+
+def xlnx_pwr_fldd_norm(x, a, sigma=1):
+    # Returns the value of
+    return x*np.log(x)*power_folded_norm_pdf(x, alpha=a, sigma_sqrd=sigma)
+
+
+def expectation_power_folded_norm(a):
+    # Computes E[XlogX] where X ~ power normal distribution (a)
+    if np.abs(a) < 0.02:
+        # a too small and would cause numerical errors
+        # Return -a as an approximation
+        return -0.661 * a
+    return integrate.quad(xlnx_pwr_fldd_norm, 0, np.inf, args=(a,))[0]
+
+
+def comp_k_theta_from_alphas(alphas):
+    # Computes closed form MLE for k, theta
+    # Uses numerically evaluated expectations in place of sums over the data
+    num = len(alphas)
+    means = np.zeros(num)
+    e_xlogxs = np.zeros(num)
+
+    # Constant value for the mean of a log normal ~ log(|N(0,1)|) distribution, computed numerically
+    mean_log_abs_norm = -0.6351814
+
+    for i, a in enumerate(alphas):
+        means[i] = mean_power_folded_norm(a)
+
+        # Track the E[XlogX] for each alpha value
+        e_xlogxs[i] = expectation_power_folded_norm(a)
+
+    # The mean of the product is the product of the means
+    mean = np.prod(means)
+
+    # Set initial value of the sum for E[XlogX]
+    e_xlogx = 0
+
+    # Compute E[XlogX] for the whole distribution
+    for i in range(num):
+        e_xlogx += mean * e_xlogxs[i] / means[i]
+
+    # E[logX] for whole distribution
+    e_logx = np.sum(alphas) * mean_log_abs_norm
+
+    # Combine terms in form of MLEs
+    k = mean / (e_xlogx - e_logx*mean)
+    theta = e_xlogx - e_logx*mean
+
+    return k, theta
 
 
 def alpha_stable_pdf(x, alpha=1, beta=1, c=1, mu=0):

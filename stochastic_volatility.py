@@ -193,7 +193,7 @@ def predict_univ_mrkv(N, num_points, a=0.95, b=1.0, c=1.23, d=0.0, mu=0.0, retur
         return trajectory_y
 
 
-def gen_univ_gamma(N, a=0.99, b=1.0, k=1.23, theta=0.0, mu=0.0, return_hidden=False, **kwargs):
+def gen_univ_gamma(N, a=0.99, b=1.0, k=1.0, theta=1.0, mu=0.0, return_hidden=False, **kwargs):
     """
     Generates a univariate model with gamma distributed noise
     X = a * (X_prev - mu) + sqrt(b) * standard normal

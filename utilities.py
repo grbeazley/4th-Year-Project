@@ -5,7 +5,7 @@ from scipy.stats import kurtosis
 
 def normalise(data, return_params=False):
     # Normalises a data series by subtracting mean and dividing by standard deviation
-    if len(data.shape):
+    if len(data.shape) == 1:
         # Has only one dimension
         mean = np.mean(data)
         stds = np.std(data)
