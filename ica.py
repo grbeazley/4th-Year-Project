@@ -63,7 +63,7 @@ def cf_krts(w, derivative=False):
     return w
 
 
-def fastICA(signals, alpha=1, thresh=1e-8, iterations=5000, contrast_func=cf_cosh):
+def fastICA(signals, alpha=1, thresh=1e-8, iterations=5000, contrast_func=cf_tanh, reduce_dims=0):
     m, n = signals.shape
 
     # Initialize random weights
@@ -107,10 +107,13 @@ def fastICA(signals, alpha=1, thresh=1e-8, iterations=5000, contrast_func=cf_cos
     return W
 
 
-def energyICA(signals_in, thresh=1e-9, iterations=10000, tau=1):
+def energyICA(signals_in, thresh=1e-9, iterations=10000, tau=1, reduce_dims=0):
     # Performs fastICA using a time lag as proposed by Hyvarinen 2001
 
     m, n = signals_in.shape
+
+    # Reduce dimension of output if required
+    m_def = m - reduce_dims
 
     assert tau < n, "tau too large"
 
@@ -118,7 +121,7 @@ def energyICA(signals_in, thresh=1e-9, iterations=10000, tau=1):
     signals = signals_in[:, tau:]
 
     # Initialize random weights
-    W = np.random.rand(m, m)
+    W = np.random.rand(m_def, m)
     M_all = np.zeros([n-tau, m, m])
 
     for i in range(n-tau):
@@ -129,7 +132,7 @@ def energyICA(signals_in, thresh=1e-9, iterations=10000, tau=1):
 
     M = M_mean + M_mean.T
 
-    for c in range(m):
+    for c in range(m_def):
         # Iterate through rows in W
         w = W[c, :].copy().reshape(m, 1)
 
@@ -200,7 +203,7 @@ def whiten_data(data):
     return data_whitened, whiten_matrix
 
 
-def comp_ica(data, algorithm="fastICA"):
+def comp_ica(data, algorithm="fastICA", reduce_dims=0):
     # data is an m x N matrix where N is the number of data points and m is the number of series
     # Returns calculated independent components and the mixing matrix to recombine them
     # independent * mixing matrix = original signals
@@ -213,10 +216,10 @@ def comp_ica(data, algorithm="fastICA"):
     else:
         algo_func = fastICA
 
-    unmix_matrix = algo_func(data)
-    mix_matrix = np.linalg.inv(unmix_matrix)
+    unmix_matrix = algo_func(data, reduce_dims=reduce_dims)
+    # mix_matrix = np.linalg.inv(unmix_matrix)
     latent_signals = np.dot(data.T, unmix_matrix.T).T
-    return latent_signals, mix_matrix
+    return latent_signals, unmix_matrix
 
 
 #################################################### DEPRECATED CODE ###################################################

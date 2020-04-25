@@ -40,6 +40,16 @@ def gen_univ_sto_vol(N, a=0.99, b=1.0, c=1.0, mu=0.0, return_hidden=False, **kwa
         return trajectory_y
 
 
+def hidden_to_observed(trajectory, c_var):
+    # Converts hidden univariate trajectory to an observed process
+    n = len(trajectory)
+    trajectory_obs = np.zeros(n)
+    for j in range(n):
+        trajectory_obs[j] = np.sqrt(c_var) * np.exp(trajectory[j] / 2) * np.random.randn()
+
+    return trajectory_obs
+
+
 def gen_multi_sto_vol(N, m, **kwargs):
     # Generates a multivariate (m x N) stochastic volatility model using the type specified
     # No leverage used
@@ -233,11 +243,12 @@ def gen_univ_gamma(N, a=0.99, b=1.0, k=1.0, theta=1.0, mu=0.0, return_hidden=Fal
 
 
 if __name__ == "__main__":
-    # np.random.seed(3)
-    num = 1000
+    np.random.seed(25)
+    num = 4049
     num_dims = 2
-    # traj = gen_univ_sto_vol(num, a=0.992, mu=0, b=0.098, c=0.007, x0=0.01830269160087)
-    # traj_h, traj_y = gen_univ_sto_vol(num, a=0.95, mu=0, b=0.3, c=0.01, return_hidden=True)
+    traj_y = gen_univ_sto_vol(num, a=0.995, mu=0, b=0.023, c=1)
+    scatter(traj_y)
+    # traj_h, traj_y = gen_univ_sto_vol(num, a=0.90, mu=0, b=1, c=0.01, return_hidden=True)
     aa = 0.99
     bb = 0.1
     cc = 0
@@ -247,7 +258,7 @@ if __name__ == "__main__":
     kk = 0.72
 
     # traj_h, traj_y = gen_univ_mrkv(num, a=aa, mu=0, b=bb, c=cc, d=dd, return_hidden=True)
-    traj_h, traj_y = gen_univ_gamma(num, a=aa, mu=0, b=bb, theta=thth, k=kk, return_hidden=True)
+    # traj_h, traj_y = gen_univ_gamma(num, a=aa, mu=0, b=bb, theta=thth, k=kk, return_hidden=True)
     # traj_h, traj_y = predict_univ_mrkv(N=20, num_points=num, a=aa, mu=0, b=bb, return_hidden=True, x0=0.5)
     # plt.figure()
     # plt.figure()
@@ -279,8 +290,9 @@ if __name__ == "__main__":
     # plot_components(traj_h)
     # plot_components(traj_y)
 
-    scatter(traj_h)
-    scatter(traj_y)
+    # scatter(traj_h)
+    # scatter(traj_y)
+    # scatter(np.log(np.abs(traj_y)))
     # scatter(np.log(np.abs(traj_y)))
     # plt.plot(traj_h)
     # plt.plot(traj_y)

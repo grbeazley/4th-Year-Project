@@ -2,6 +2,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from utilities import log_returns
+from mpl_toolkits.axes_grid1.inset_locator import InsetPosition, mark_inset
 
 
 def plot(*args):
@@ -89,7 +90,7 @@ def plot_compare(model_data, true_data):
         plt.legend(['Model', 'True'])
 
 
-def plot_components(series_data, title=''):
+def plot_components(series_data, title='', line=False):
     # Creates figure with subplots for each of the m components in the m x N input data
     figure = plt.figure()
     figure.suptitle(title)
@@ -97,14 +98,47 @@ def plot_components(series_data, title=''):
     num_series = len(series_data[:, 0])
     ymax = np.max(series_data)
     ymin = np.min(series_data)
-    for i in range(num_series):
-        if i == 0:
-            plt.title(title)
-        plt.subplot(num_series, 1, i + 1)
-        plt.scatter(np.arange(num_points), series_data[i, :], s=0.5)
-        plt.ylim([ymin, ymax])
-        frame1 = plt.gca()
-        if i != num_series - 1:
-            frame1.axes.get_xaxis().set_ticks([])
+
+    if line:
+        for i in range(num_series):
+            if i == 0:
+                plt.title(title)
+            plt.subplot(num_series, 1, i + 1)
+            plt.plot(series_data[i, :])
+            plt.ylim([ymin, ymax])
+            frame1 = plt.gca()
+            if i != num_series - 1:
+                frame1.axes.get_xaxis().set_ticks([])
+    else:
+        for i in range(num_series):
+            if i == 0:
+                plt.title(title)
+            plt.subplot(num_series, 1, i + 1)
+            plt.scatter(np.arange(num_points), series_data[i, :], s=0.5)
+            plt.ylim([ymin, ymax])
+            frame1 = plt.gca()
+            if i != num_series - 1:
+                frame1.axes.get_xaxis().set_ticks([])
 
     plt.draw()
+
+
+def plot_inset(*args, ax_lims=None, inset_pos=None):
+    fig, ax = plt.subplots()  # create a new figure with a default 111 subplot
+    ax.plot(*args)
+    if inset_pos is None:
+        inset_pos = [0.2, 0.4, 0.5, 0.5]
+
+    if ax_lims is None:
+        ax_lims = [0, 1, 0, 1]
+
+    ax2 = plt.axes([0, 0, 1, 1])
+    # Manually set the position and relative size of the inset axes within ax1
+    ip = InsetPosition(ax, inset_pos)
+    ax2.set_axes_locator(ip)
+    ax2.plot(*args)
+    x1, x2, y1, y2 = ax_lims
+    ax2.set_xlim(x1, x2)  # apply the x-limits
+    ax2.set_ylim(y1, y2)  # apply the y-limits
+
+    mark_inset(ax, ax2, loc1=2, loc2=4, fc="none", ec='0.5')

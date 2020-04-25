@@ -3,6 +3,7 @@ from scipy.special import gamma as gamma_function
 from scipy.stats import levy_stable
 from matplotlib import pyplot as plt
 import scipy.integrate as integrate
+from mpl_toolkits.axes_grid1.inset_locator import InsetPosition, mark_inset
 
 
 def normal_pdf(x, mu, sigma_sqrd):
@@ -159,3 +160,31 @@ def qq_plot(a_samples, b_samples):
     plt.plot(x, x, color="k", ls="--")
 
     plt.show()
+
+
+def qq_plot_inset(a_samples, b_samples, ax_lims, inset_pos=None):
+    # Plots qq_plot with inset zoomed in on the ax_lims section
+    if inset_pos is None:
+        inset_pos = [0.1, 0.3, 0.65, 0.65]
+
+    percentages = np.linspace(0, 100, 100)
+    quants_a = np.percentile(a_samples, percentages)
+    quants_b = np.percentile(b_samples, percentages)
+
+    fig, ax = plt.subplots()  # create a new figure with a default 111 subplot
+    ax.plot(quants_a, quants_b, ls="", marker='o')
+    x = np.linspace(min(np.min(quants_a), np.min(quants_b)), max(np.max(quants_a), np.max(quants_b)))
+    ax.plot(x, x, color="k", ls="--")
+
+    ax2 = plt.axes([0, 0, 1, 1])
+    # Manually set the position and relative size of the inset axes within ax1
+    ip = InsetPosition(ax, inset_pos)
+    ax2.set_axes_locator(ip)
+    ax2.plot(quants_a, quants_b, ls="", marker='o')
+    ax2.plot(x, x, color="k", ls="--")
+    x1, x2, y1, y2 = ax_lims
+    ax2.set_xlim(x1, x2)  # apply the x-limits
+    ax2.set_ylim(y1, y2)  # apply the y-limits
+
+    mark_inset(ax, ax2, loc1=2, loc2=4, fc="none", ec='0.5')
+
