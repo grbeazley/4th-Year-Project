@@ -6,6 +6,7 @@ from utilities import sym_sigmoid, dev_sym_sigmoid, comp_sign
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from plot_utils import *
 
 
 class NeuralNet:
@@ -187,11 +188,11 @@ class NeuralNet:
 
 
 if __name__ == "__main__":
-    # path = "Data Sets\\Forex\\GBP-USD Hourly.csv"
-    path = "Data Sets\\Electricity\\UK Elec Hourly - no weekends.csv"
+    path = "Data Sets\\Forex\\GBP-USD Hourly.csv"
+    # path = "Data Sets\\Electricity\\UK Elec Hourly - no weekends.csv"
 
     # Create a network class
-    network = NeuralNet(path, input_size=48, hidden_size=64, do_sub_sample=False)
+    network = NeuralNet(path, input_size=24, hidden_size=32, do_sub_sample=False)
 
     # Train the network
     network.train_network(epochs=10)

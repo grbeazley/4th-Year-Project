@@ -3,6 +3,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 from pdfs import *
 from levy import fit_levy
+from levy import levy as levy_pdf
+from levy import random as levy_rvs
 from scipy.stats import levy_stable, gamma
 from scipy.special import gamma as gamma_function
 from utilities import is_normal
@@ -11,7 +13,7 @@ import scipy.integrate as integrate
 
 np.random.seed(0)
 
-num_series = 10
+num_series = 5
 N = 100000
 
 x1 = np.random.randn(num_series, N)
@@ -73,8 +75,8 @@ e1 = np.log(np.abs(x1))
 #        [-0.12253026, -0.12545013, -0.42234213,  0.65504456, -0.16029794,
 #         -0.09150524,  0.19845827, -0.03488978, -0.53717206,  0.08381032]])
 
-Q = np.array([0.28791489,  0.62549222,  0.09314578,  0.61501408, -0.28518374,
-              0.12874914, -0.23426127,  0.16920323,  0.21908036, 0.15890213])
+# Q = np.array([0.28791489,  0.62549222,  0.09314578,  0.61501408, -0.28518374,
+#               0.12874914, -0.23426127,  0.16920323,  0.21908036, 0.15890213])
 
 # Q = np.array([0.9291489,  0.1249222,  0.9314578,  0.01501408, -0.28518374])
 
@@ -85,13 +87,16 @@ Q = np.array([0.28791489,  0.62549222,  0.09314578,  0.61501408, -0.28518374,
 # mus = np.zeros(num_series)
 # var_s = np.zeros(num_series)
 # # for i in range(num_series):
+
+Q = np.array([0.9, -0.3, 0.1, 0.8, 0.1])
 m1 = np.dot(Q, e1)
+
 # m1 = e1[i, :]
 # mu = np.mean(m1)
 # var = np.var(m1)
 # mus[i] = mu
 # var_s[i] = var
-# q = np.linspace(0, 4, 1000)
+q = np.linspace(0, 15, 500)
 # q = np.linspace(-10, 5, 100)
 # pdf_q = alpha_stable_pdf(-q, alpha=0.5, beta=1, mu=4.5, c=0.8)
 
@@ -107,11 +112,12 @@ m1 = np.dot(Q, e1)
 # pdf_q = alpha_stable_pdf(q, alpha=params.x[0], beta=params.x[1], mu=params.x[2], c=params.x[3])
 #
 # hist_norm(m1)
-# plt.plot(q, pdf_q)
+# plt.plot(q, levy_pdf(q, alpha=params.x[0], beta=params.x[1], mu=params.x[2], sigma=params.x[3]))
 #
-# a1 = (levy_stable.rvs(params.x[0], params.x[1], size=100000) * params.x[3]) + params.x[2]
+# # a1 = (levy_stable.rvs(params.x[0], params.x[1], size=100000) * params.x[3]) + params.x[2]
+# a1 = levy_rvs(params.x[0], params.x[1], params.x[2], params.x[3], shape=(10000,))
 #
-# qq_plot(a1, m1)
+# qq_plot_inset(a1, m1, ax_lims=[-8, 5, -8, 5], inset_pos =[0.3, 0.1, 0.6, 0.6])
 
 
 # # Normal Distribution
@@ -126,48 +132,40 @@ m1 = np.dot(Q, e1)
 # qq_plot(n1, m1)
 
 
-# Gamma Distribution
+# # Gamma Distribution
 x = np.sum(np.exp(m1))
-y = np.sum(np.exp(m1)*m1)
-z = np.sum(m1) * np.sum(np.exp(m1))
-N = 100000
-k = (N*x) / ((N*y) - z)
-theta = (N*y - z)/N**2
-
-mean = 1
-var = 1
+# y = np.sum(np.exp(m1)*m1)
+# z = np.sum(m1) * np.sum(np.exp(m1))
+# N = 100000
+# k = (N*x) / ((N*y) - z)
+# theta = (N*y - z)/N**2
+#
 
 means = np.zeros(num_series)
 xlnxs = np.zeros(num_series)
-
+#
 for i, a in enumerate(Q):
     means[i] = mean_power_folded_norm(a)
-    var *= _variance_power_folded_norm(a)
 
 mean = np.prod(means)
-var_sub = var - mean**2
 
-theta_star = var_sub/mean
-k_star = mean**2 / var_sub
-
-k_star_hat, theta_star_hat = comp_k_theta_from_alphas(Q)
+k_star, theta_star = comp_k_theta_from_alphas(Q)
 
 print(k_star, theta_star)
 print("------------------")
-print(k_star_hat, theta_star_hat)
-print("------------------")
-print(k, theta)
-r = np.linspace(0.001, 5, 1000)
 
+# print(k, theta)
+r = np.linspace(0.001, 7, 500)
+#
+# hist_norm(np.exp(m1), bins=1000)
+# plt.plot(r, gamma_pdf(r, k=k, theta=theta))
+# g1 = np.random.gamma(k, theta, 100000*num_series)
+# qq_plot(g1, np.exp(m1))
+#
+#
 hist_norm(np.exp(m1), bins=1000)
-plt.plot(r, gamma_pdf(r, k=k, theta=theta))
-g1 = np.random.gamma(k, theta, 100000*num_series)
-qq_plot(g1, np.exp(m1))
-
-
-hist_norm(np.exp(m1), bins=1000)
-plt.plot(r, gamma_pdf(r, k=k_star_hat, theta=theta_star_hat))
-g1 = np.random.gamma(k_star_hat, theta_star_hat, 100000*num_series)
+plt.plot(r, gamma_pdf(r, k=k_star, theta=theta_star))
+g1 = np.random.gamma(k_star, theta_star, 100000*num_series)
 qq_plot(g1, np.exp(m1))
 
 # k=3

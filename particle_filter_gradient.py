@@ -2,6 +2,7 @@ import numpy as np
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 from stochastic_volatility import gen_univ_sto_vol
+from utilities import load_data
 
 
 class ParticleFilter:
@@ -163,21 +164,30 @@ if __name__ == "__main__":
     bb = 1
     cc = 1
 
-    num_data = 200
-    N = 200
+    num_data = 1000
+    N = 500
+
+    stem = "Data Sets\\FTSEICA_sto_vol\\"
+
+    names = {"Oil.csv": ['Adj Close']}
+    data_frame = load_data(stem, names)
+    # Take only series values from the data frame
+    data = data_frame.values[1:, :].astype('float')
+    # Take difference
+    data_returns = (np.log(data[:, 1:]) - np.log(data[:, :-1]))[0]
 
     test_x, test_y = gen_univ_sto_vol(num_data, a=aa, b=bb, c=cc, return_hidden=True)
 
     test_y = np.abs(test_y)
 
-    particle_filter = ParticleFilter(test_y,
+    particle_filter = ParticleFilter(data_returns[num_data:],
                                      num_particles=N,
-                                     a=0.5,
-                                     b=0.5,
+                                     a=0.9,
+                                     b=0.1,
                                      c=0.5,
-                                     true_hidden=test_x,
-                                     num_iterations=250,
-                                     learn_rate=0.0005)
+                                     # true_hidden=test_x,
+                                     num_iterations=50,
+                                     learn_rate=0.0001)
 
     particle_filter.filter_pass()
     particle_filter.plot_filter_pass()
