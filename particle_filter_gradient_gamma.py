@@ -3,14 +3,15 @@ from tqdm import tqdm
 from matplotlib import pyplot as plt
 from stochastic_volatility import gen_univ_mrkv, gen_univ_sto_vol, gen_univ_gamma
 from pdfs import gamma_pdf
+from plot_utils import *
 from scipy.special import gamma as gamma_function
-from scipy.special import polygamma as gamma_deriv
+from scipy.special import digamma as gamma_deriv
 
 
 class ParticleFilter:
 
     def __init__(self, true_obs, num_particles=20, num_iterations=1, a=0.99,
-                 b=1.0, k=1.0, theta=1.0, mu=0.0, learn_rate=0.0001, **kwargs):
+                 b=1.0, c=1.0, k=1.0, theta=1.0, mu=0.0, learn_rate=0.0001, **kwargs):
 
         self.num_data = len(true_obs) - 1
         self.num_particles = num_particles
@@ -18,11 +19,12 @@ class ParticleFilter:
 
         self.a = a
         self.b = b
+        self.c = c
         self.k = k
         self.theta = theta
         self.mu = mu
         self.learn_rate = learn_rate
-        self.num_params = 2
+        self.num_params = 3
 
         self.true_obs = true_obs
         self.particle_history = np.zeros([self.num_particles, self.num_data + 1])
@@ -53,7 +55,7 @@ class ParticleFilter:
 
     def observation(self, x, y):
         # Probability of observing y given x
-        theta = np.exp(x/2) * self.theta
+        theta = np.exp(x/2) * self.theta * np.sqrt(self.c)
         obs = gamma_pdf(y, self.k, theta)
         return obs
 
@@ -72,10 +74,11 @@ class ParticleFilter:
         for i in range(self.num_data):
             # Choose which particles to continue with using their weights
             particle_indexes = np.random.choice(particle_range, size=self.num_particles, p=weights)
-            Xn = self.particle_history[np.sort(particle_indexes), i]
+            sorted_indexes = np.sort(particle_indexes)
+            Xn = self.particle_history[sorted_indexes, i]
 
             # Update the previous state history to be that of the chosen particles
-            self.particle_history[:, :i+1] = self.particle_history[np.sort(particle_indexes), :i+1]
+            self.particle_history[:, :i+1] = self.particle_history[sorted_indexes, :i+1]
 
             # Advance the hidden state by one time step
             Xn_plus_1 = self.hidden_sample(Xn)
@@ -103,7 +106,7 @@ class ParticleFilter:
             self.params_history = np.zeros([self.num_params, num_iterations + 1])
             self.learn_rate_history = np.zeros(num_iterations + 1)
 
-        self.params_history[:, 0] = [self.a, self.b]
+        self.params_history[:, 0] = [self.a, self.b, self.c]
         self.learn_rate_history[0] = self.adap_learn_rate
 
         for i in tqdm(range(num_iterations)):
@@ -114,7 +117,7 @@ class ParticleFilter:
             final_weights_norm = final_weights / np.sum(final_weights)
 
             if self.do_adaptive_learn:
-                self.adap_learn_rate = min((1 / (10*i+self.adap_0)) ** self.alpha, self.learn_rate)
+                self.adap_learn_rate = min((1 / (5*i+self.adap_0)) ** self.alpha, self.learn_rate)
 
             # Compute the gradient of the log likelihood w.r.t. a
             sqrd_minus_one_prdct = self.particle_history[:, :-1] * self.particle_history[:, 1:]
@@ -132,8 +135,17 @@ class ParticleFilter:
             # Update parameter b
             self.b = max(0.0001, self.b + self.adap_learn_rate * dl_db * 2.5)
 
+            th_exp_term = np.exp(self.particle_history/2) * self.theta
+            first_term = self.true_obs / (2*th_exp_term * self.c**(3/2))
+            summand_c = gamma_deriv(th_exp_term*np.sqrt(self.c)) * (th_exp_term / 2*np.sqrt(self.c))
+            sum_c = np.sum(first_term - summand_c - (self.k/(2*self.c)), axis=1)
+            dl_dc = np.dot(sum_c, final_weights_norm)
+
+            # Update parameter c
+            self.c = max(0.000001, self.c + self.adap_learn_rate * dl_dc)
+
             # Store update to parameters
-            self.params_history[:, i + 1] = [self.a, self.b]
+            self.params_history[:, i + 1] = [self.a, self.b, self.c]
             self.learn_rate_history[i + 1] = self.adap_learn_rate
 
     def clear_history(self, clear_params=False):
@@ -155,45 +167,51 @@ class ParticleFilter:
     def plot_params(self, title=""):
         plt.figure()
         plt.plot(self.params_history.T)
-        plt.legend(['a', 'b'])
+        plt.legend(['$\\phi$', '$\\sigma^2$', '$\\beta$'])
         plt.title("Parameter Evolution In Training for " + str(title))
 
     def plot_learn_rate(self):
         plt.figure()
         plt.plot(self.learn_rate_history)
         plt.title("Learning Rate History")
+        plt.ylim([0, 1.1 * max(self.learn_rate_history)])
 
 
 if __name__ == "__main__":
-    np.random.seed(1)
+    # np.random.seed(0)
 
-    aa = 0.8
-    bb = 1
+    aa = 0.9
+    bb = 0.5
+
+    c_true = 1
+    c_start = 0.5
 
     kk = 0.7
     thth = 1
 
-    num_data = 200
-    N = 100
+    num_data = 1000
+    N = 1000
 
-    test_x, test_y = gen_univ_gamma(num_data, a=aa, b=bb, k=kk, theta=thth, return_hidden=True)
+    test_x, test_y = gen_univ_gamma(num_data, a=aa, b=bb, c=c_true, k=kk, theta=thth, return_hidden=True)
     # test_x, test_y = gen_univ_sto_vol(num_data, a=aa, b=bb, c=cc, return_hidden=True)
     # test_y = np.log(np.abs(test_y))
 
     particle_filter = ParticleFilter(test_y,
                                      num_particles=N,
                                      a=0.5,
-                                     b=0.5,
-                                     k=0.7,
-                                     theta=1,
+                                     b=1,
+                                     c=c_start,
+                                     k=kk,
+                                     theta=thth,
                                      true_hidden=test_x,
-                                     num_iterations=500,
-                                     learn_rate=0.001,
-                                     do_adaptive_learn=True)
+                                     num_iterations=20,
+                                     learn_rate=0.5/num_data,
+                                     do_adaptive_learn=True
+                                     )
 
-    particle_filter.filter_pass()
-    particle_filter.plot_filter_pass()
+    # particle_filter.filter_pass()
+    # particle_filter.plot_filter_pass()
     particle_filter.calibrate_model()
     particle_filter.plot_params()
-    particle_filter.plot_filter_pass()
+    # particle_filter.plot_filter_pass()
     particle_filter.plot_learn_rate()
