@@ -203,14 +203,15 @@ def predict_univ_mrkv(N, num_points, a=0.95, b=1.0, c=1.23, d=0.0, mu=0.0, retur
         return trajectory_y
 
 
-def gen_univ_gamma(N, a=0.99, b=1.0, k=1.0, theta=1.0, mu=0.0, return_hidden=False, **kwargs):
+def gen_univ_gamma(N, a=0.99, b=1.0, c=1.0, k=1.0, theta=1.0, mu=0.0, return_hidden=False, **kwargs):
     """
     Generates a univariate model with gamma distributed noise
     X = a * (X_prev - mu) + sqrt(b) * standard normal
-    Y = exp(X/2) * gamma(k, theta) = gamma(k, theta*exp(X/2))
+    Y = sqrt(c) * exp(X/2) * gamma(k, theta) = gamma(k, theta*exp(X/2))
 
     :param a: momentum term
     :param b: variance of hidden noise
+    :param c: scale factor in observed process
     :param k: shape parameter for observation process gamma
     :param theta: rate parameter for observation process gamma
     :param mu: mean for hidden process
@@ -231,7 +232,7 @@ def gen_univ_gamma(N, a=0.99, b=1.0, k=1.0, theta=1.0, mu=0.0, return_hidden=Fal
 
     for i in range(N):
         x = mu + a*(x_prev-mu) + np.sqrt(b)*np.random.randn()
-        y = np.random.gamma(k, np.exp(x/2)*theta, 1)
+        y = np.random.gamma(k, theta, 1) * np.exp(x/2) * np.sqrt(c)
         x_prev = x
         trajectory_y[i + 1] = y
         trajectory_x[i + 1] = x
@@ -246,19 +247,19 @@ if __name__ == "__main__":
     np.random.seed(25)
     num = 4049
     num_dims = 2
-    traj_y = gen_univ_sto_vol(num, a=0.995, mu=0, b=0.023, c=1)
-    scatter(traj_y)
+    # traj_y, traj_h = gen_univ_sto_vol(num, a=0.995, mu=0, b=0.023, c=1, return_hidden=True)
+    # scatter(traj_y)
     # traj_h, traj_y = gen_univ_sto_vol(num, a=0.90, mu=0, b=1, c=0.01, return_hidden=True)
-    aa = 0.99
-    bb = 0.1
-    cc = 0
+    aa = 0.5
+    bb = 0.5
+    cc = 1
     dd = 0
 
     thth = 1.03
     kk = 0.72
 
     # traj_h, traj_y = gen_univ_mrkv(num, a=aa, mu=0, b=bb, c=cc, d=dd, return_hidden=True)
-    # traj_h, traj_y = gen_univ_gamma(num, a=aa, mu=0, b=bb, theta=thth, k=kk, return_hidden=True)
+    traj_h, traj_y = gen_univ_gamma(num, a=aa, mu=0, b=bb, theta=thth, k=kk, return_hidden=True)
     # traj_h, traj_y = predict_univ_mrkv(N=20, num_points=num, a=aa, mu=0, b=bb, return_hidden=True, x0=0.5)
     # plt.figure()
     # plt.figure()
