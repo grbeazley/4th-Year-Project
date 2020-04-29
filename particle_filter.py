@@ -11,7 +11,7 @@ from scipy.special import digamma as gamma_deriv
 class ParticleFilter:
 
     def __init__(self, true_obs, num_particles=20, num_iterations=1, a=0.99,
-                 b=1.0, c=1.0, k=1.0, theta=1.0, mu=0.0, learn_rate=0.0001, **kwargs):
+                 b=1.0, c=1.0, learn_rate=0.0001, **kwargs):
 
         self.num_data = len(true_obs) - 1
         self.num_particles = num_particles
@@ -20,9 +20,6 @@ class ParticleFilter:
         self.a = a
         self.b = b
         self.c = c
-        self.k = k
-        self.theta = theta
-        self.mu = mu
         self.learn_rate = learn_rate
         self.num_params = 3
 
@@ -53,15 +50,12 @@ class ParticleFilter:
         noise = np.random.randn(len(x))
         return x * self.a + (np.sqrt(self.b) * noise)
 
-    def observation(self, x, y):
-        # Probability of observing y given x
-        theta = np.exp(x/2) * self.theta * np.sqrt(self.c)
-        obs = gamma_pdf(y, self.k, theta)
-        return obs
+    def _get_initial_sample(self):
+        return np.sqrt(self.b / (1 - self.a**2)) * np.random.randn(self.num_particles)
 
     def filter_pass(self):
         # Run the particle filter once through the data
-        initial_sample = np.sqrt(self.b / (1 - self.a**2)) * np.random.randn(self.num_particles)
+        initial_sample = self._get_initial_sample()
         initial_weights = self.observation(initial_sample, self.true_obs[0])
         weights = initial_weights / np.sum(initial_weights)
 
@@ -119,33 +113,10 @@ class ParticleFilter:
             if self.do_adaptive_learn:
                 self.adap_learn_rate = min((1 / (5*i+self.adap_0)) ** self.alpha, self.learn_rate)
 
-            # Compute the gradient of the log likelihood w.r.t. a
-            sqrd_minus_one_prdct = self.particle_history[:, :-1] * self.particle_history[:, 1:]
-            summand_a = (sqrd_minus_one_prdct - (np.square(self.particle_history[:, :-1]) * self.a)) / self.b
-            dl_da = np.dot(np.sum(summand_a, axis=1), final_weights_norm)
-
-            # Update parameter, ensuring it retains stationarity
-            self.a = min(self.a + self.adap_learn_rate*dl_da, 0.9999)
-
-            # Compute the gradient of the log likelihood w.r.t. b
-            sqrd_prdct = np.square(self.particle_history[:, 1:] - self.a * self.particle_history[:, :-1])
-            sum_b = np.sum(sqrd_prdct - self.b, axis=1) / 2*(self.b**2)
-            dl_db = np.dot(sum_b, final_weights_norm)
-
-            # Update parameter b
-            self.b = max(0.0001, self.b + self.adap_learn_rate * dl_db * 2.5)
-
-            th_exp_term = np.exp(self.particle_history/2) * self.theta
-            first_term = self.true_obs / (2*th_exp_term * self.c**(3/2))
-            summand_c = gamma_deriv(th_exp_term*np.sqrt(self.c)) * (th_exp_term / 2*np.sqrt(self.c))
-            sum_c = np.sum(first_term - summand_c - (self.k/(2*self.c)), axis=1)
-            dl_dc = np.dot(sum_c, final_weights_norm)
-
-            # Update parameter c
-            self.c = max(0.000001, self.c + self.adap_learn_rate * dl_dc)
+            new_params = self._comp_param_update(final_weights_norm)
 
             # Store update to parameters
-            self.params_history[:, i + 1] = [self.a, self.b, self.c]
+            self.params_history[:, i + 1] = new_params
             self.learn_rate_history[i + 1] = self.adap_learn_rate
 
     def clear_history(self, clear_params=False):
@@ -167,7 +138,7 @@ class ParticleFilter:
     def plot_params(self, title=""):
         plt.figure()
         plt.plot(self.params_history.T)
-        plt.legend(['$\\phi$', '$\\sigma^2$', '$\\beta$'])
+        plt.legend(self._get_param_symbols())
         plt.title("Parameter Evolution In Training for " + str(title))
 
     def plot_learn_rate(self):
@@ -177,41 +148,3 @@ class ParticleFilter:
         plt.ylim([0, 1.1 * max(self.learn_rate_history)])
 
 
-if __name__ == "__main__":
-    # np.random.seed(0)
-
-    aa = 0.9
-    bb = 0.5
-
-    c_true = 1
-    c_start = 0.5
-
-    kk = 0.7
-    thth = 1
-
-    num_data = 1000
-    N = 1000
-
-    test_x, test_y = gen_univ_gamma(num_data, a=aa, b=bb, c=c_true, k=kk, theta=thth, return_hidden=True)
-    # test_x, test_y = gen_univ_sto_vol(num_data, a=aa, b=bb, c=cc, return_hidden=True)
-    # test_y = np.log(np.abs(test_y))
-
-    particle_filter = ParticleFilter(test_y,
-                                     num_particles=N,
-                                     a=0.5,
-                                     b=1,
-                                     c=c_start,
-                                     k=kk,
-                                     theta=thth,
-                                     true_hidden=test_x,
-                                     num_iterations=20,
-                                     learn_rate=0.5/num_data,
-                                     do_adaptive_learn=True
-                                     )
-
-    # particle_filter.filter_pass()
-    # particle_filter.plot_filter_pass()
-    particle_filter.calibrate_model()
-    particle_filter.plot_params()
-    # particle_filter.plot_filter_pass()
-    particle_filter.plot_learn_rate()
