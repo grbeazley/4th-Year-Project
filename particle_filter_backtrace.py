@@ -1,11 +1,20 @@
 import numpy as np
 from tqdm import tqdm
-from matplotlib import pyplot as plt
-from stochastic_volatility import gen_univ_mrkv, gen_univ_sto_vol, gen_univ_gamma
-from pdfs import gamma_pdf
 from plot_utils import *
-from scipy.special import gamma as gamma_function
-from scipy.special import digamma as gamma_deriv
+
+
+
+def trace_by_idx(start, stop, start_row, particle_history, index_history):
+    # Start is index to start from (large number)
+    # stop is index to stop at (small number)
+    traced_history = np.zeros(start - stop + 1)
+    propagate_idx = start_row
+    for idx in range(stop, start + 1):
+        traced_history[start - idx] = particle_history[propagate_idx, start + stop - idx]
+        propagate_idx = index_history[propagate_idx, start + stop - idx]
+
+    return traced_history
+
 
 
 class ParticleFilter:
@@ -52,6 +61,7 @@ class ParticleFilter:
 
     def _get_initial_sample(self):
         return np.sqrt(self.b / (1 - self.a**2)) * np.random.randn(self.num_particles)
+
     # @profile
     def filter_pass(self):
         # Run the particle filter once through the data
@@ -60,8 +70,15 @@ class ParticleFilter:
         weights = initial_weights / np.sum(initial_weights)
 
         self.particle_history[:, 0] = initial_sample
+
+        self.particle_history2 = np.zeros_like(self.particle_history)
+        self.particle_history2[:, 0] = initial_sample
+
         self.weights_history[:, 0] = weights
         self.estimate_history[0] = np.dot(weights, self.particle_history[:, 0])
+
+        self.index_history = np.zeros_like(self.particle_history, dtype=int)
+        # self.index_history[:, -1] = np.arange(self.num_particles)
 
         particle_range = np.arange(self.num_particles)
 
@@ -71,14 +88,16 @@ class ParticleFilter:
             sorted_indexes = np.sort(particle_indexes)
             Xn = self.particle_history[sorted_indexes, i]
 
+            self.index_history[:, i + 1] = sorted_indexes
             # Update the previous state history to be that of the chosen particles
-            self.particle_history[:, :i+1] = self.particle_history[sorted_indexes, :i+1]
+            # self.particle_history[:, :i+1] = self.particle_history[sorted_indexes, :i+1]
 
             # Advance the hidden state by one time step
             Xn_plus_1 = self.hidden_sample(Xn)
 
             # Store the new state in the process history
             self.particle_history[:, i + 1] = Xn_plus_1
+            self.particle_history2[:, i + 1] = Xn_plus_1
 
             # Make the new weights the likelihood of observing the known y for a given Xn hidden state
             new_particle_weights = self.observation(Xn_plus_1, self.true_obs[i + 1])
@@ -91,6 +110,31 @@ class ParticleFilter:
 
             # Update the expectation for the best guess
             self.estimate_history[i + 1] = np.dot(weights, self.particle_history[:, i + 1])
+
+        idx_to_prop = np.arange(self.num_particles)
+        idx_stop = None
+        for idx in range(self.num_data + 1):
+
+            idx_to_prop = np.unique(self.index_history[:, self.num_data - idx][idx_to_prop])
+            if len(idx_to_prop) == 1:
+                # Have found final particle so stop
+                idx_stop = idx + 1
+                idx_to_prop = idx_to_prop[0]
+                break
+
+        if idx_stop is None:
+            # no time saved just iterate through for each one
+            raise Exception("not coded")
+        else:
+            particle_history = np.zeros_like(self.particle_history2)
+            main_particle_history = trace_by_idx(self.num_data - idx_stop, 0, idx_to_prop, self.particle_history2, self.index_history)
+            particle_history[:, :(self.num_data - idx_stop) + 1] = main_particle_history
+
+            for i in range(self.num_particles):
+                particle_history[i, (self.num_data - idx_stop) + 1:] = trace_by_idx(self.num_data, self.num_data - idx_stop + 1, i, self.particle_history2,
+                                                                        self.index_history)
+
+        self.particle_history3 = particle_history
 
     def calibrate_model(self, num_iterations=None):
         # Run the filter pass numerous times to optimise a,b,c,d
@@ -132,7 +176,7 @@ class ParticleFilter:
         if self.is_true_hidden:
             plt.plot(self.true_hidden)
             plt.legend(['True Hidden State'])
-        plt.plot(self.particle_history.T, '--', linewidth=0.4)
+        # plt.plot(self.particle_history.T, '--', linewidth=0.4)
         plt.plot(self.estimate_history)
 
     def plot_params(self, title=""):

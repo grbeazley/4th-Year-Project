@@ -141,4 +141,4 @@ def plot_inset(*args, ax_lims=None, inset_pos=None):
     ax2.set_xlim(x1, x2)  # apply the x-limits
     ax2.set_ylim(y1, y2)  # apply the y-limits
 
-    mark_inset(ax, ax2, loc1=2, loc2=4, fc="none", ec='0.5')
+    mark_inset(ax, ax2, loc1=2, loc2=3, fc="none", ec='0.5')
