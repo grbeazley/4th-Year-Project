@@ -3,10 +3,9 @@ from tqdm import tqdm
 from plot_utils import *
 
 
-
 def trace_by_idx(start, stop, start_row, particle_history, index_history):
     # Start is index to start from (large number)
-    # stop is index to stop at (small number)
+    # Stop is index to stop at (small number)
     traced_history = np.zeros(start - stop + 1)
     propagate_idx = start_row
     for idx in range(stop, start + 1):
@@ -14,7 +13,6 @@ def trace_by_idx(start, stop, start_row, particle_history, index_history):
         propagate_idx = index_history[propagate_idx, start + stop - idx]
 
     return traced_history
-
 
 
 class ParticleFilter:
@@ -71,14 +69,13 @@ class ParticleFilter:
 
         self.particle_history[:, 0] = initial_sample
 
-        self.particle_history2 = np.zeros_like(self.particle_history)
-        self.particle_history2[:, 0] = initial_sample
+        part_hist_mix = np.zeros_like(self.particle_history)
+        part_hist_mix[:, 0] = initial_sample
 
         self.weights_history[:, 0] = weights
         self.estimate_history[0] = np.dot(weights, self.particle_history[:, 0])
 
-        self.index_history = np.zeros_like(self.particle_history, dtype=int)
-        # self.index_history[:, -1] = np.arange(self.num_particles)
+        idx_hist = np.zeros_like(self.particle_history, dtype=int)
 
         particle_range = np.arange(self.num_particles)
 
@@ -86,18 +83,16 @@ class ParticleFilter:
             # Choose which particles to continue with using their weights
             particle_indexes = np.random.choice(particle_range, size=self.num_particles, p=weights)
             sorted_indexes = np.sort(particle_indexes)
-            Xn = self.particle_history[sorted_indexes, i]
+            Xn = part_hist_mix[sorted_indexes, i]
 
-            self.index_history[:, i + 1] = sorted_indexes
-            # Update the previous state history to be that of the chosen particles
-            # self.particle_history[:, :i+1] = self.particle_history[sorted_indexes, :i+1]
+            # Keep track of which particles were chosen
+            idx_hist[:, i + 1] = sorted_indexes
 
             # Advance the hidden state by one time step
             Xn_plus_1 = self.hidden_sample(Xn)
 
             # Store the new state in the process history
-            self.particle_history[:, i + 1] = Xn_plus_1
-            self.particle_history2[:, i + 1] = Xn_plus_1
+            part_hist_mix[:, i + 1] = Xn_plus_1
 
             # Make the new weights the likelihood of observing the known y for a given Xn hidden state
             new_particle_weights = self.observation(Xn_plus_1, self.true_obs[i + 1])
@@ -109,13 +104,14 @@ class ParticleFilter:
             weights = new_particle_weights / np.sum(new_particle_weights)
 
             # Update the expectation for the best guess
-            self.estimate_history[i + 1] = np.dot(weights, self.particle_history[:, i + 1])
+            self.estimate_history[i + 1] = np.dot(weights, part_hist_mix[:, i + 1])
 
+        # Find the dominant particle trajectory
         idx_to_prop = np.arange(self.num_particles)
         idx_stop = None
         for idx in range(self.num_data + 1):
 
-            idx_to_prop = np.unique(self.index_history[:, self.num_data - idx][idx_to_prop])
+            idx_to_prop = np.unique(idx_hist[:, self.num_data - idx][idx_to_prop])
             if len(idx_to_prop) == 1:
                 # Have found final particle so stop
                 idx_stop = idx + 1
@@ -123,18 +119,23 @@ class ParticleFilter:
                 break
 
         if idx_stop is None:
-            # no time saved just iterate through for each one
-            raise Exception("not coded")
+            # No time saved just iterate through for each one
+            print("No Dominant Particle Found")
+            particle_history = np.zeros_like(part_hist_mix)
+            for i in range(self.num_particles):
+                particle_history[i, :] =\
+                    trace_by_idx(self.num_data, 0, i, part_hist_mix, idx_hist)
         else:
-            particle_history = np.zeros_like(self.particle_history2)
-            main_particle_history = trace_by_idx(self.num_data - idx_stop, 0, idx_to_prop, self.particle_history2, self.index_history)
+            # Found dominant particle, starting at idx_stop
+            particle_history = np.zeros_like(part_hist_mix)
+            main_particle_history = trace_by_idx(self.num_data - idx_stop, 0, idx_to_prop, part_hist_mix, idx_hist)
             particle_history[:, :(self.num_data - idx_stop) + 1] = main_particle_history
 
             for i in range(self.num_particles):
-                particle_history[i, (self.num_data - idx_stop) + 1:] = trace_by_idx(self.num_data, self.num_data - idx_stop + 1, i, self.particle_history2,
-                                                                        self.index_history)
+                particle_history[i, (self.num_data - idx_stop) + 1:] \
+                    = trace_by_idx(self.num_data, self.num_data - idx_stop + 1, i, part_hist_mix, idx_hist)
 
-        self.particle_history3 = particle_history
+        self.particle_history = particle_history
 
     def calibrate_model(self, num_iterations=None):
         # Run the filter pass numerous times to optimise a,b,c,d
@@ -190,5 +191,11 @@ class ParticleFilter:
         plt.plot(self.learn_rate_history)
         plt.title("Learning Rate History")
         plt.ylim([0, 1.1 * max(self.learn_rate_history)])
+
+    def update_num_particles(self, new_number):
+        self.num_particles = new_number
+        self.particle_history = np.zeros([self.num_particles, self.num_data + 1])
+        self.weights_history = np.zeros([self.num_particles, self.num_data + 1])
+
 
 
