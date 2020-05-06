@@ -15,7 +15,7 @@ def trace_by_idx(start, stop, start_row, particle_history, index_history):
     return traced_history
 
 
-class ParticleFilter:
+class ParticleFilterBackTrace:
 
     def __init__(self, true_obs, num_particles=20, num_iterations=1, a=0.99,
                  b=1.0, c=1.0, learn_rate=0.0001, **kwargs):

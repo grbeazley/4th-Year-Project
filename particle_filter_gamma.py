@@ -5,16 +5,16 @@ from stochastic_volatility import gen_univ_gamma
 from pdfs import gamma_pdf
 from plot_utils import *
 # from particle_filter import ParticleFilter
-from particle_filter_backtrace import ParticleFilter
+from particle_filter_backtrace import ParticleFilterBackTrace
 
 
-class ParticleFilterGamma(ParticleFilter):
+class ParticleFilterGamma(ParticleFilterBackTrace):
 
     def __init__(self, true_obs, num_particles=20, num_iterations=1, a=0.99,
                  b=1.0, c=1.0, correction=1.0, k=1.0, theta=1.0, learn_rate=0.0001, learn_a=1,
                  learn_b=15, learn_c=20, **kwargs):
 
-        ParticleFilter.__init__(self, true_obs, num_particles, num_iterations, a,
+        ParticleFilterBackTrace.__init__(self, true_obs, num_particles, num_iterations, a,
                                 b, c, learn_rate, **kwargs)
 
         self.k = k
