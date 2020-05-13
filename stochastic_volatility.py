@@ -54,8 +54,8 @@ def gen_multi_sto_vol(N, m, **kwargs):
     # Generates a multivariate (m x N) stochastic volatility model using the type specified
     # No leverage used
 
-    trajectory_y = np.zeros([m, N])
-    trajectory_h = np.zeros([m, N])
+    trajectory_y = np.zeros([m, N + 1])
+    trajectory_h = np.zeros([m, N + 1])
     zero_mean = np.zeros(m)
 
     if 'model_type' in kwargs:
@@ -111,7 +111,15 @@ def gen_multi_sto_vol(N, m, **kwargs):
         else:
             var_observed = np.diag(np.ones(m))
 
+        # Calculate initial values
         h_prev = np.random.randn(m)
+        trajectory_h[:, 0] = h_prev
+        # Calculate observation variance and noise
+        obs_var = np.diag(np.exp(h_prev / 2))
+        obs_noise = np.random.multivariate_normal(zero_mean, var_observed)
+
+        # Update observed state trajectory
+        trajectory_y[:, 0] = np.dot(obs_var, obs_noise)
 
         for i in range(N):
             # Create latent noise vector (m x 1)
@@ -126,8 +134,8 @@ def gen_multi_sto_vol(N, m, **kwargs):
 
             # Update observed state and trajectory
             y = np.dot(obs_var, obs_noise)
-            trajectory_y[:, i] = y
-            trajectory_h[:, i] = h
+            trajectory_y[:, i + 1] = y
+            trajectory_h[:, i + 1] = h
             
             # Update previous time step
             h_prev = h
@@ -177,7 +185,7 @@ def gen_univ_mrkv(N, a=0.99, b=1, c=1.23, d=0.0, mu=0.0, return_hidden=False, **
         return trajectory_y
 
 
-def predict_univ_mrkv(N, num_points, a=0.95, b=1.0, c=1.23, d=0.0, mu=0.0, return_hidden=False, **kwargs):
+def predict_univ_sto_vol(N, num_points, a=0.95, b=1.0, c=1.0, mu=0.0, return_hidden=False, **kwargs):
     # Allows the generation of lots of possible processes from the same initial conditions
 
     if 'x0' in kwargs:
@@ -188,11 +196,11 @@ def predict_univ_mrkv(N, num_points, a=0.95, b=1.0, c=1.23, d=0.0, mu=0.0, retur
     trajectory_y = np.zeros([N, num_points + 1])
     trajectory_x = np.zeros([N, num_points + 1])
     trajectory_x[:, 0] = x_prev
-    trajectory_y[:, 0] = x_prev + d + np.sqrt(c) * np.random.randn(N)
+    trajectory_y[:, 0] = np.exp(x_prev/2) * np.sqrt(c) * np.random.randn(N)
 
     for i in range(num_points):
         x = mu + a * (x_prev - mu) + np.sqrt(b) * np.random.randn(N)
-        y = x + d + np.sqrt(c) * np.random.randn(N)
+        y = np.exp(x/2) * np.sqrt(c) * np.random.randn(N)
         x_prev = x
         trajectory_y[:, i + 1] = y
         trajectory_x[:, i + 1] = x
