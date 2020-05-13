@@ -12,7 +12,7 @@ class ParticleFilterGamma(ParticleFilterBackTrace):
 
     def __init__(self, true_obs, num_particles=20, num_iterations=1, a=0.99,
                  b=1.0, c=1.0, correction=1.0, k=1.0, theta=1.0, learn_rate=0.0001, learn_a=1,
-                 learn_b=15, learn_c=20, **kwargs):
+                 learn_b=15, learn_c=20, multi=False, **kwargs):
 
         ParticleFilterBackTrace.__init__(self, true_obs, num_particles, num_iterations, a,
                                 b, c, learn_rate, **kwargs)
@@ -24,6 +24,9 @@ class ParticleFilterGamma(ParticleFilterBackTrace):
         self.learn_b = learn_b
         self.learn_c = learn_c
 
+        # Whether to use multivariate initial sampling scheme
+        self.multi = multi
+
     def observation(self, x, y):
         # Probability of observing y given x
         theta = np.exp((x*self.correction)/2) * self.theta * np.sqrt(self.c)
@@ -31,11 +34,19 @@ class ParticleFilterGamma(ParticleFilterBackTrace):
         return obs
 
     def _get_initial_sample(self):
-        return np.sqrt(self.b / (1 - self.a ** 2)) * np.random.randn(self.num_particles)
+        if self.multi:
+            return np.random.randn(self.num_particles) * self.correction
+        else:
+            return np.sqrt(self.b / (1 - self.a ** 2)) * np.random.randn(self.num_particles)
 
     @staticmethod
     def _get_param_symbols():
         return ['$\\phi$', '$\\sigma^2$', '$\\beta^2$']
+
+    def update_learn_rates(self, new_rates):
+        self.learn_a = new_rates[0]
+        self.learn_b = new_rates[1]
+        self.learn_c = new_rates[2]
 
     def _comp_param_update(self, final_weights_norm):
         # Compute the gradient of the log likelihood w.r.t. a
