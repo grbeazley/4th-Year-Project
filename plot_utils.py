@@ -1,5 +1,6 @@
 # File contains functions to assist in plotting data series of unusual forms
 import numpy as np
+from scipy.stats import norm
 from matplotlib import pyplot as plt
 from utilities import log_returns
 from mpl_toolkits.axes_grid1.inset_locator import InsetPosition, mark_inset
@@ -21,6 +22,16 @@ def scatter(*args):
         plt.scatter(*args, s=0.5)
 
 
+def bar(*args, **kwargs):
+    # Wrapper for the plt.bar function
+    plt.figure()
+    if len(args) == 1:
+        # Only data passed
+        plt.bar(np.arange(len(args[0])), *args, width=0.4, **kwargs)
+    else:
+        plt.bar(*args, s=0.5, **kwargs)
+
+
 def hist(*args):
     # Wrapper for the plt.hist function
     plt.figure()
@@ -39,6 +50,36 @@ def hist_norm(*args, **kwargs):
         plt.hist(*args, **kwargs, bins=100, density=True)
     else:
         plt.hist(*args, **kwargs, density=True)
+
+
+def rolling_confidence(data, num_steps=10):
+    # Data is an N x M matrix of trajectories
+    M = data.shape[1]
+    means = np.mean(data, axis=0)
+    stds = np.std(data, axis=0)
+
+    plt.figure()
+    plt.plot(means, linewidth=2)
+
+    rgb_start = [20, 118, 189]
+    rgb_end = [173, 205, 240]
+    colors = col_gradient(rgb_start, rgb_end, num_steps)[::-1] / 256
+    std_steps = norm.ppf(np.linspace(0.6, 0.95, num_steps)[::-1])
+
+    for i in range(num_steps):
+        plt.fill_between(np.arange(M), means - stds * std_steps[i], means + stds * std_steps[i],
+                         color=colors[i], alpha=.1)
+
+
+def col_gradient(start_rgb, end_rgb, num_points):
+    # Computes colour gradient, end value not included
+    gradient = np.array(end_rgb) - np.array(start_rgb)
+    color_gradient = np.zeros([num_points, 3])
+
+    for i in range(num_points):
+        color_gradient[i, :] = np.round(np.array(start_rgb) + (i/num_points) * gradient)
+
+    return color_gradient
 
 
 def plot_sto_vol(time_series, conv_type=None):
@@ -90,14 +131,36 @@ def plot_compare(model_data, true_data):
         plt.legend(['Model', 'True'])
 
 
-def plot_components(series_data, title='', line=False):
+def plot_components(series_data, title='', line=False, global_lims=None, dates=None):
     # Creates figure with subplots for each of the m components in the m x N input data
     figure = plt.figure()
     figure.suptitle(title)
     num_points = len(series_data[0, :])
     num_series = len(series_data[:, 0])
-    ymax = np.max(series_data)
-    ymin = np.min(series_data)
+
+    set_lims = False
+
+    if dates is None:
+        isdates = False
+    else:
+        isdates = True
+
+    if global_lims is None:
+        global_lims = True
+    elif (type(global_lims) == np.ndarray) or (type(global_lims) == list):
+        ymin = global_lims[0]
+        ymax = global_lims[1]
+        global_lims = False
+        set_lims = True
+    else:
+        ymax = np.max(series_data)
+        ymin = np.min(series_data)
+        set_lims = True
+
+    if global_lims:
+        ymax = np.max(series_data)
+        ymin = np.min(series_data)
+        set_lims = True
 
     if line:
         for i in range(num_series):
@@ -105,7 +168,8 @@ def plot_components(series_data, title='', line=False):
                 plt.title(title)
             plt.subplot(num_series, 1, i + 1)
             plt.plot(series_data[i, :])
-            plt.ylim([ymin, ymax])
+            if set_lims:
+                plt.ylim([ymin, ymax])
             frame1 = plt.gca()
             if i != num_series - 1:
                 frame1.axes.get_xaxis().set_ticks([])
@@ -114,12 +178,15 @@ def plot_components(series_data, title='', line=False):
             if i == 0:
                 plt.title(title)
             plt.subplot(num_series, 1, i + 1)
-            plt.scatter(np.arange(num_points), series_data[i, :], s=0.5)
-            plt.ylim([ymin, ymax])
+            if isdates:
+                plt.scatter(dates, series_data[i, :], s=0.5)
+            else:
+                plt.scatter(np.arange(num_points), series_data[i, :], s=0.5)
+            if set_lims:
+                plt.ylim([ymin, ymax])
             frame1 = plt.gca()
             if i != num_series - 1:
                 frame1.axes.get_xaxis().set_ticks([])
-
     plt.draw()
 
 
