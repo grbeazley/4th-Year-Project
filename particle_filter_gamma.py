@@ -15,7 +15,7 @@ class ParticleFilterGamma(ParticleFilterBackTrace):
                  learn_b=15, learn_c=20, multi=False, **kwargs):
 
         ParticleFilterBackTrace.__init__(self, true_obs, num_particles, num_iterations, a,
-                                b, c, learn_rate, **kwargs)
+                                         b, c, learn_rate, **kwargs)
 
         self.k = k
         self.theta = theta
