@@ -37,6 +37,8 @@ class ParticleFilterBackTrace:
         self.learn_rate_history = np.zeros(self.num_iterations + 1)
         self.weights_history = np.zeros([self.num_particles, self.num_data + 1])
 
+        self.likelihood_history = np.zeros([1, self.num_iterations])
+
         if 'true_hidden' in kwargs:
             self.true_hidden = kwargs['true_hidden']
             self.is_true_hidden = True
@@ -160,8 +162,9 @@ class ParticleFilterBackTrace:
 
             new_params = self._comp_param_update(final_weights_norm)
 
-            # Store update to parameters
+            # Store update to parameters and likelihood
             self.params_history[:, i + 1] = new_params
+            self.likelihood_history[:, i] = np.sum(np.log(np.sum(self.weights_history, axis=0)/self.num_particles))
             self.learn_rate_history[i + 1] = self.adap_learn_rate
 
     def clear_history(self, clear_params=False):
@@ -170,6 +173,7 @@ class ParticleFilterBackTrace:
             self.params_history = np.zeros([self.num_params, self.num_iterations + 1])
         self.particle_history = np.zeros([self.num_particles, self.num_data + 1])
         self.weights_history = np.zeros([self.num_particles, self.num_data + 1])
+        self.estimate_history = np.zeros(self.num_data + 1)
 
     def plot_filter_pass(self):
         # Plot the result of the particle filter pass to check it worked correctly
@@ -185,6 +189,11 @@ class ParticleFilterBackTrace:
         plt.plot(self.params_history.T)
         plt.legend(self._get_param_symbols())
         plt.title("Parameter Evolution In Training for " + str(title))
+
+    def plot_likelihood(self, title=""):
+        plt.figure()
+        plt.plot(self.likelihood_history.T)
+        plt.title("Likelihood Evolution In Training for " + str(title))
 
     def plot_learn_rate(self):
         plt.figure()

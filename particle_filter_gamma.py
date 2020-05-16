@@ -76,6 +76,29 @@ class ParticleFilterGamma(ParticleFilterBackTrace):
         # Return update to parameters
         return [self.a, self.b, self.c]
 
+    def one_predict_hidden(self):
+        final_weights = self.weights_history[:, -1]
+        fwn = final_weights / np.sum(final_weights)
+
+        particle_indexes = np.random.choice(np.arange(self.num_particles), size=self.num_particles, p=fwn)
+        x_prev = self.particle_history[particle_indexes, -1]
+        predictions = self.hidden_sample(x_prev)
+
+        return predictions
+
+    def one_step_multi(self, test_obs_data):
+        num_points = np.shape(test_obs_data)[0]
+        predictions = np.zeros([self.num_particles, num_points])
+
+        for i in tqdm(range(num_points)):
+            predictions[:, i] = self.one_predict_hidden()
+            self.true_obs = np.append(self.true_obs, test_obs_data[i])
+            self.num_data += 1
+            self.clear_history()
+            self.filter_pass()
+
+        return predictions
+
 
 if __name__ == "__main__":
     np.random.seed(0)
