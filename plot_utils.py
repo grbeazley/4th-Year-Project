@@ -25,9 +25,11 @@ def scatter(*args):
 def bar(*args, **kwargs):
     # Wrapper for the plt.bar function
     plt.figure()
+
     if len(args) == 1:
         # Only data passed
-        plt.bar(np.arange(len(args[0])), *args, width=0.4, **kwargs)
+        # plt.bar(str(np.arange(len(args[0]))), *args, width=0.4, **kwargs)
+        plt.bar([str(i+1) for i in range(len(args[0]))], *args, width=0.4, **kwargs)
     else:
         plt.bar(*args, s=0.5, **kwargs)
 
@@ -59,7 +61,7 @@ def rolling_confidence(data, num_steps=10):
     stds = np.std(data, axis=0)
 
     plt.figure()
-    plt.plot(means, linewidth=2)
+    plt.plot(means, linewidth=2, label='Prediction')
 
     rgb_start = [20, 118, 189]
     rgb_end = [173, 205, 240]
@@ -190,7 +192,7 @@ def plot_components(series_data, title='', line=False, global_lims=None, dates=N
     plt.draw()
 
 
-def plot_inset(*args, ax_lims=None, inset_pos=None):
+def plot_inset(*args, ax_lims=None, inset_pos=None, line_pos=None):
     fig, ax = plt.subplots()  # create a new figure with a default 111 subplot
     ax.plot(*args)
     if inset_pos is None:
@@ -198,6 +200,9 @@ def plot_inset(*args, ax_lims=None, inset_pos=None):
 
     if ax_lims is None:
         ax_lims = [0, 1, 0, 1]
+
+    if line_pos is None:
+        line_pos = [2,3]
 
     ax2 = plt.axes([0, 0, 1, 1])
     # Manually set the position and relative size of the inset axes within ax1
@@ -208,4 +213,4 @@ def plot_inset(*args, ax_lims=None, inset_pos=None):
     ax2.set_xlim(x1, x2)  # apply the x-limits
     ax2.set_ylim(y1, y2)  # apply the y-limits
 
-    mark_inset(ax, ax2, loc1=2, loc2=3, fc="none", ec='0.5')
+    mark_inset(ax, ax2, loc1=line_pos[0], loc2=line_pos[1], fc="none", ec='0.5')

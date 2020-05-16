@@ -44,8 +44,19 @@ def hidden_to_observed(trajectory, c_var):
     # Converts hidden univariate trajectory to an observed process
     n = len(trajectory)
     trajectory_obs = np.zeros(n)
-    for j in range(n):
-        trajectory_obs[j] = np.sqrt(c_var) * np.exp(trajectory[j] / 2) * np.random.randn()
+    for i in range(n):
+        trajectory_obs[i] = np.sqrt(c_var) * np.exp(trajectory[i] / 2) * np.random.randn()
+
+    return trajectory_obs
+
+
+def hidden_to_observed_multi(trajectories, c_var):
+    # Converts hidden univariate trajectory to an observed process
+    M = np.shape(trajectories)[1]
+    N = np.shape(trajectories)[0]
+    trajectory_obs = np.zeros([N, M])
+    for i in range(M):
+        trajectory_obs[:, i] = np.sqrt(c_var) * np.exp(trajectories[:, i] / 2) * np.random.randn(N)
 
     return trajectory_obs
 

@@ -12,26 +12,27 @@ np.random.seed(0)
 
 ######################## Import #################################
 # Create 2400 training and 100 test
-train = 1000
-test = 100
+train = 5000
+test = 509
 num = train + test
 num_series = 4
 
 
 # data_h, data_y = load_bivariate(num)
-data_h, data_y = load_msv(num, num_series)
+# data_h, data_y = load_msv(num, num_series)
 # data_y, dates = load_oil(plot_comps=False)
-# data_h = np.ones_like(data_y)
+data_y, dates = load_forex(plot_comps=False)
+data_h = np.ones_like(data_y)
 
 #################### Pre-processing #######################
-plot_components(data_y, 'Input Data Raw')
-plot_components(data_h, 'Input Hidden State')
+plot_components(data_y, 'Input Data Raw', global_lims=[-0.2, 0.2])
+# plot_components(data_h, 'Input Hidden State')
 
-data_train = data_y[:, :train] + 1e-6
-data_test = data_y[:, train-1:] + 1e-6
+data_train = data_y[:, :train] + 4e-4
+data_test = data_y[:, train:] + 4e-4
 
 true_train = data_h[:, :train]
-true_test = data_h[:, train-1:]
+true_test = data_h[:, train:]
 
 ######################### ICA ###########################
 # input("Press Enter to run ICA...")
@@ -41,13 +42,18 @@ data_abs = np.abs(data_train)
 data_hidden = np.log(data_abs)
 # data_hidden = data_train
 
-plot_components(data_hidden, 'Input Hidden')
+# plot_components(data_hidden, 'Input Hidden')
 
 # Normalise the data and store the parameters
 # data_hidden_av_norm, means, stds = normalise(data_hidden, return_params=True)
-# means = np.mean(data_hidden, axis=1, keepdims=True)
-means = np.zeros([num_series, 1])
+means = np.mean(data_hidden, axis=1, keepdims=True)
+# means = np.zeros([num_series, 1])
 data_hidden_av_norm = data_hidden - means
+
+plot_components(data_hidden_av_norm)
+
+# data_hidden_mov_av_norm = moving_average(data_hidden, 20)
+# plot_components(data_hidden_mov_av_norm)
 # data_whitened = data_hidden
 
 # Compute whitened data
@@ -61,10 +67,12 @@ whiten_inv = np.linalg.inv(whiten_matrix)
 kurtosis_values = is_normal(data_whitened)
 
 # Number of dimensions to find
-num_ics = 2
+num_ics = 4
 
 # Compute independent components
 ics, unmix_matrix = comp_ica(data_whitened, algorithm="energyICA", reduce_dims=num_series-num_ics)
+
+# ics = np.dot(unmix_matrix, data_hidden)
 
 mix_matrix = np.linalg.pinv(unmix_matrix)
 
@@ -103,11 +111,12 @@ print(mse)
 bar(mse)
 plt.pause(0.01)
 
-demix_matrix = np.dot(unmix_matrix, whiten_matrix)
+# demix_matrix = np.dot(unmix_matrix, whiten_matrix)
+
 
 ############### Particle Filter Paramater Optimisation ################
 input("Press Enter to run particle filter...")
-N = 1000
+N = 5000
 
 
 signal_idxs = [0]
@@ -127,37 +136,42 @@ for ica_idx in signal_idxs:
 
     # Calculate k and theta values for gamma distributed noise
     kk, thth = comp_k_theta_from_alphas(alphas)
-    true_hidden = np.dot(alphas, true_train)
+    true_hidden = np.dot(alphas, true_train) / 2
+    # true_hidden = true_train[0, :]
+    scale = 8
 
     hidden = sgn*ics[ica_idx, :]
     # hidden = (sgn*ics[ica_idx, :]) - np.mean(sgn*ics[ica_idx, :])
 
-    filters[ica_idx] = ParticleFilterGamma(true_obs=np.exp(hidden)*7,
+    filters[ica_idx] = ParticleFilterGamma(true_obs=np.exp(hidden)*scale,
                                            num_particles=N,
-                                           a=0.6,
-                                           b=0.4,
-                                           c=1,
+                                           a=0.5,
+                                           b=0.25,
+                                           c=1.45,
                                            correction=np.sum(alphas),
                                            k=kk,
                                            theta=thth,
-                                           learn_rate=0.2/train,
-                                           num_iterations=150,
+                                           learn_rate=0/train,
+                                           num_iterations=1,
                                            true_hidden=true_hidden,
                                            learn_a=0.5,
                                            learn_b=10,
                                            learn_c=10,
-                                           multi=True)
+                                           multi=False)
 
     # particle_filter_1.filter_pass()
     # filters[ica_idx].plot_filter_pass()
     filters[ica_idx].calibrate_model()
     filters[ica_idx].plot_params(ica_idx)
+    filters[ica_idx].plot_likelihood()
 
     # filters[ica_idx].adap_learn_rate = 0.01/train
     # filters[ica_idx].calibrate_model(50)
     # filters[ica_idx].plot_params(ica_idx)
 
-
+    test_hidden = np.log(np.abs(data_test))
+    ics_test = np.dot(demix_matrix, test_hidden)
+    prds = filters[ica_idx].one_step_multi(np.exp(sgn*ics_test[ica_idx, :20])*scale)
 
 ############################## Prediction ######################
 input("Press Enter to perform prediction...")

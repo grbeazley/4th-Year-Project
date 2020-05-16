@@ -35,10 +35,49 @@ def load_oil(plot_comps=True):
     num_series = len(data[:, 0])
 
     # Take the dates from the data frame for plotting
-    dates = data_frame.values[0, :]
+    dates = data_frame.values[0, 1:]
 
     if plot_comps:
-        plot_components(data_returns, dates=dates[1:], global_lims=[-0.2, 0.2])
+        plot_components(data_returns, dates=dates, global_lims=[-0.2, 0.2])
+
+    return data_returns, dates
+
+
+def load_forex(plot_comps=True):
+
+    stem = "Data Sets\\Daily_portfolio\\"
+
+    # names = {"GBPEUR=X.csv": ['Adj Close'],
+    #          "GBPJPY=X.csv": ['Adj Close'],
+    #          "GBPNZD=X.csv": ['Adj Close'],
+    #          "GBPUSD=X.csv": ['Adj Close'],
+    #          "AAPL.csv": ['Adj Close'],
+    #          }
+
+    names = {"Crude.csv": ['Adj Close'],
+             "RDSA.L.csv": ['Adj Close'],
+             "CVX.csv": ['Adj Close'],
+             # "Gold.csv": ['Adj Close'],
+             "NG=F.csv": ['Adj Close'],
+             #"W=F.csv": ['Adj Close'],
+             }
+
+    data_frame = load_data(stem, names)
+
+    # Take only series values from the data frame
+    data = data_frame.values[1:, :].astype('float')
+
+    # data_pos = np.where(data <= 0, 0.05, data)
+    data_pos = np.abs(data)
+
+    # Take difference
+    data_returns = np.log(data_pos[:, 1:]) - np.log(data_pos[:, :-1])
+
+    # Take the dates from the data frame for plotting
+    dates = data_frame.values[0, 1:]
+
+    if plot_comps:
+        plot_components(data_returns, dates=dates, global_lims=[-0.2, 0.2])
 
     return data_returns, dates
 
@@ -46,9 +85,9 @@ def load_oil(plot_comps=True):
 def load_bivariate(num):
     # Generate truck and trailer series, using one driving process and different observations
     mu, a, b, c = 0, 0.95, 0.5, 0.1
-    x_prev = np.random.randn()
+    x_prev = np.sqrt(b / (1 - a**2)) * np.random.randn()
 
-    trajectory_hidden = np.zeros(num)
+    trajectory_hidden = np.zeros(num + 1)
 
     # Create array of hidden state variables
     for i in range(num):
@@ -71,16 +110,16 @@ def load_msv(num, num_series):
     # phi = np.diag(diag_val_phi)
     # phi = phi + (np.random.rand(num_series, num_series) - 0.5) * 4 * ((1-np.max(diag_val_phi))/num_series)
 
-    # phi = np.array([[0.8, 0, 0.2, 0],
-    #                 [0.8, 0, 0.2, 0],
-    #                 [0.2, 0, 0.8, 0],
-    #                 [0.2, 0, 0.8, 0]], dtype=float)
+    # phi = np.array([[1, 0, 0, 0],
+    #                 [1, 0, 0, 0],
+    #                 [0, 0, 1, 0],
+    #                 [0, 0, 1, 0]], dtype=float)
 
     phi = np.array([[0.7, 0.1, 0.1, 0.1],
                     [0.1, 0.7, 0.1, 0.1],
                     [0.1, 0.1, 0.7, 0.1],
                     [0.1, 0.1, 0.1, 0.7]], dtype=float)
-    #
+
     phi *= 0.95
 
     # Generate pseudo random sigma eta matrix around a prior
@@ -103,4 +142,5 @@ def load_msv(num, num_series):
 
 
 if __name__ == "__main__":
-    load_oil(plot_comps=True)
+    load_forex(True)
+    # load_oil(plot_comps=True)
