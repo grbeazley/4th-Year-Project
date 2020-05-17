@@ -146,6 +146,7 @@ class ParticleFilterBackTrace:
         else:
             self.params_history = np.zeros([self.num_params, num_iterations + 1])
             self.learn_rate_history = np.zeros(num_iterations + 1)
+            self.likelihood_history = np.zeros([1, num_iterations])
 
         self.params_history[:, 0] = [self.a, self.b, self.c]
         self.learn_rate_history[0] = self.adap_learn_rate
