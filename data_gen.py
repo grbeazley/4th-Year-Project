@@ -2,9 +2,10 @@ from utilities import load_data
 import numpy as np
 from stochastic_volatility import hidden_to_observed, gen_multi_sto_vol
 from plot_utils import *
+from portfolio_optimisation import *
 
 
-def load_oil(plot_comps=True):
+def load_oil(plot_comps=True, return_raw=False):
 
     stem = "Data Sets\\Oil\\"
 
@@ -40,10 +41,13 @@ def load_oil(plot_comps=True):
     if plot_comps:
         plot_components(data_returns, dates=dates, global_lims=[-0.2, 0.2])
 
-    return data_returns, dates
+    if return_raw:
+        return data_returns, dates, data_pos
+    else:
+        return data_returns, dates
 
 
-def load_forex(plot_comps=True):
+def load_port(plot_comps=True, return_raw=False):
 
     stem = "Data Sets\\Daily_portfolio\\"
 
@@ -55,10 +59,12 @@ def load_forex(plot_comps=True):
     #          }
 
     names = {"Crude.csv": ['Adj Close'],
-             "RDSA.L.csv": ['Adj Close'],
+             "TOT.csv": ['Adj Close'],
              "CVX.csv": ['Adj Close'],
              # "Gold.csv": ['Adj Close'],
-             "NG=F.csv": ['Adj Close'],
+             "AAPL.csv": ['Adj Close'],
+             "INTC.csv": ['Adj Close'],
+             "AMD.csv": ['Adj Close'],
              #"W=F.csv": ['Adj Close'],
              }
 
@@ -79,7 +85,10 @@ def load_forex(plot_comps=True):
     if plot_comps:
         plot_components(data_returns, dates=dates, global_lims=[-0.2, 0.2])
 
-    return data_returns, dates
+    if return_raw:
+        return data_returns, dates, data_pos
+    else:
+        return data_returns, dates
 
 
 def load_bivariate(num):
@@ -142,5 +151,32 @@ def load_msv(num, num_series):
 
 
 if __name__ == "__main__":
-    load_forex(True)
-    # load_oil(plot_comps=True)
+    # load_forex(True)
+    # data, dates, price_data = load_oil(plot_comps=True, return_raw=True)
+    data, dates, price_data = load_port(plot_comps=False, return_raw=True)
+
+    days = np.arange(4616, 5021)
+    weights = np.zeros([6, len(days)])
+    for i, day in enumerate(days):
+        means = compute_exp_mean(price_data[:, day-10:day-1]) * 100
+        covar = np.cov(data[:, day-10:day-1]*100)
+        weights[:, i] = compute_weights(covar, means, 0.25)
+
+    returns_1, variance_1 = comp_return(weights, price_data, days)
+
+    weights_2 = np.ones_like(weights) / 6
+    returns_2, variance_2 = comp_return(weights_2, price_data, days)
+
+    plot(np.exp(returns_1))
+    plt.plot(np.exp(returns_2))
+
+    # plot(variance_1)
+    # plt.plot(variance_2)
+
+    # plot(np.exp(returns_1)/np.sqrt(variance_1))
+    # plt.plot(np.exp(returns_2)/np.sqrt(variance_2))
+
+
+
+
+

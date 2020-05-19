@@ -13,7 +13,7 @@ import scipy.integrate as integrate
 
 np.random.seed(0)
 
-num_series = 5
+num_series = 6
 N = 100000
 
 x1 = np.random.randn(num_series, N)
@@ -88,7 +88,11 @@ e1 = np.log(np.abs(x1))
 # var_s = np.zeros(num_series)
 # # for i in range(num_series):
 
-Q = np.array([0.9, -0.3, 0.1, 0.8, 0.1])
+# Q = np.array([0.9, -0.3, 0.1, 0.8, 0.1])
+Q = np.array([0.5, 0.5, 0.5, 0.5])
+Q = np.array([-0.34104055, -0.43383661, -0.40733458,  0.31730219,  0.28497141,
+        0.58963234])
+# Q = np.array([0.32, 0.32, 0.32, 0.32, 0.32, 0.32, 0.32, 0.32, 0.32])
 m1 = np.dot(Q, e1)
 
 # m1 = e1[i, :]
@@ -96,7 +100,7 @@ m1 = np.dot(Q, e1)
 # var = np.var(m1)
 # mus[i] = mu
 # var_s[i] = var
-q = np.linspace(0, 15, 500)
+
 # q = np.linspace(-10, 5, 100)
 # pdf_q = alpha_stable_pdf(-q, alpha=0.5, beta=1, mu=4.5, c=0.8)
 
@@ -105,6 +109,7 @@ q = np.linspace(0, 15, 500)
 
 
 # # Alpha Stable
+# q = np.linspace(-15, 5, 500)
 # params, nelog = fit_levy(m1)
 #
 # print(params)
@@ -133,6 +138,7 @@ q = np.linspace(0, 15, 500)
 
 
 # # Gamma Distribution
+q = np.linspace(0, 15, 500)
 x = np.sum(np.exp(m1))
 # y = np.sum(np.exp(m1)*m1)
 # z = np.sum(m1) * np.sum(np.exp(m1))
@@ -155,17 +161,17 @@ print(k_star, theta_star)
 print("------------------")
 
 # print(k, theta)
-r = np.linspace(0.001, 7, 500)
+r = np.linspace(0.00, 7, 500)
 #
 # hist_norm(np.exp(m1), bins=1000)
 # plt.plot(r, gamma_pdf(r, k=k, theta=theta))
 # g1 = np.random.gamma(k, theta, 100000*num_series)
 # qq_plot(g1, np.exp(m1))
-#
+
 #
 hist_norm(np.exp(m1), bins=1000)
 plt.plot(r, gamma_pdf(r, k=k_star, theta=theta_star))
-g1 = np.random.gamma(k_star, theta_star, 100000*num_series)
+g1 = np.random.gamma(k_star, theta_star, N*num_series)
 qq_plot(g1, np.exp(m1))
 
 # k=3

@@ -203,7 +203,7 @@ def whiten_data(data):
     return data_whitened, whiten_matrix
 
 
-def comp_ica(data, algorithm="fastICA", reduce_dims=0):
+def comp_ica(data, algorithm="fastICA", reduce_dims=0, **kwargs):
     # data is an m x N matrix where N is the number of data points and m is the number of series
     # Returns calculated independent components and the mixing matrix to recombine them
     # independent * mixing matrix = original signals
@@ -216,7 +216,7 @@ def comp_ica(data, algorithm="fastICA", reduce_dims=0):
     else:
         algo_func = fastICA
 
-    unmix_matrix = algo_func(data, reduce_dims=reduce_dims)
+    unmix_matrix = algo_func(data, reduce_dims=reduce_dims, **kwargs)
     # mix_matrix = np.linalg.inv(unmix_matrix)
     latent_signals = np.dot(data.T, unmix_matrix.T).T
     return latent_signals, unmix_matrix

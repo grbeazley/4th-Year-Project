@@ -34,6 +34,27 @@ def bar(*args, **kwargs):
         plt.bar(*args, s=0.5, **kwargs)
 
 
+def stack_bar(mse_mat, labels=None):
+    # Wrapper for the plt.bar function
+    plt.figure()
+
+    num_series = np.shape(mse_mat)[0]
+    num_comps = np.shape(mse_mat)[1]
+
+    if labels is None:
+        labels = ["Input " + str(i+1) for i in range(num_series)]
+
+    index = [str(i + 1) for i in range(num_comps)]
+    tops = np.zeros(num_comps)
+
+    for i in range(num_series):
+        plt.bar(index,  mse_mat[i, :], width=0.4, bottom=tops, label=labels[i])
+        tops += mse_mat[i, :]
+
+    plt.legend()
+    plt.xlabel("Independent Component Index")
+
+
 def hist(*args):
     # Wrapper for the plt.hist function
     plt.figure()
@@ -133,7 +154,7 @@ def plot_compare(model_data, true_data):
         plt.legend(['Model', 'True'])
 
 
-def plot_components(series_data, title='', line=False, global_lims=None, dates=None):
+def plot_components(series_data, title='', line=False, global_lims=None, dates=None, labels=None):
     # Creates figure with subplots for each of the m components in the m x N input data
     figure = plt.figure()
     figure.suptitle(title)
@@ -141,6 +162,11 @@ def plot_components(series_data, title='', line=False, global_lims=None, dates=N
     num_series = len(series_data[:, 0])
 
     set_lims = False
+
+    if labels is None:
+        islabels = False
+    else:
+        islabels = True
 
     if dates is None:
         isdates = False
@@ -172,8 +198,9 @@ def plot_components(series_data, title='', line=False, global_lims=None, dates=N
             plt.plot(series_data[i, :])
             if set_lims:
                 plt.ylim([ymin, ymax])
-            frame1 = plt.gca()
+
             if i != num_series - 1:
+                frame1 = plt.gca()
                 frame1.axes.get_xaxis().set_ticks([])
     else:
         for i in range(num_series):
@@ -184,10 +211,12 @@ def plot_components(series_data, title='', line=False, global_lims=None, dates=N
                 plt.scatter(dates, series_data[i, :], s=0.5)
             else:
                 plt.scatter(np.arange(num_points), series_data[i, :], s=0.5)
+            if islabels:
+                plt.xlabel(labels[i])
             if set_lims:
                 plt.ylim([ymin, ymax])
-            frame1 = plt.gca()
             if i != num_series - 1:
+                frame1 = plt.gca()
                 frame1.axes.get_xaxis().set_ticks([])
     plt.draw()
 

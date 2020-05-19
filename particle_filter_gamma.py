@@ -90,6 +90,9 @@ class ParticleFilterGamma(ParticleFilterBackTrace):
         num_points = np.shape(test_obs_data)[0]
         predictions = np.zeros([self.num_particles, num_points])
 
+        self.true_obs = self.true_obs[-101:]
+        self.num_data = 100
+
         for i in tqdm(range(num_points)):
             predictions[:, i] = self.one_predict_hidden()
             self.true_obs = np.append(self.true_obs, test_obs_data[i])
