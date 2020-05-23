@@ -206,6 +206,14 @@ def reverse_moving_average(data, start_values, n=3):
     return recovered
 
 
+def make_stationary(matrix):
+    for i, row in enumerate(matrix):
+        if np.sum(row) >= 1:
+            matrix[i, :] / np.sum(row)
+
+    return matrix
+
+
 if __name__ == "__main__":
     stem = "Data Sets\\FTSEICA\\"
 

@@ -84,6 +84,8 @@ def gen_multi_sto_vol(N, m, **kwargs):
         if 'phi' in kwargs:
             # Sets the latent relationships
             phi = kwargs['phi']
+            if (type(phi) == int) or (type(phi) == float):
+                phi = phi*np.diag(np.ones(m))
         else:
             phi = np.diag(np.ones(m)*0.95)
         if 'var_latent' in kwargs:

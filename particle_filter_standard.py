@@ -1,12 +1,13 @@
 import numpy as np
 from tqdm import tqdm
 from particle_filter import ParticleFilter
+from particle_filter_backtrace import ParticleFilterBackTrace
 from matplotlib import pyplot as plt
 from stochastic_volatility import gen_univ_sto_vol
 from utilities import load_data
 
 
-class ParticleFilterStandard(ParticleFilter):
+class ParticleFilterStandard(ParticleFilterBackTrace):
 
     def observation(self, x, y):
         sigma = np.sqrt(self.c) * np.exp(x / 2)
@@ -69,9 +70,9 @@ if __name__ == "__main__":
 
     test_y = np.abs(test_y)
 
-    particle_filter = StandardParticleFilter(test_y,
+    particle_filter = ParticleFilterStandard(test_y,
                                              num_particles=N,
-                                             a=0.9,
+                                             a=0.5,
                                              b=0.1,
                                              c=0.5,
                                              true_hidden=test_x,
