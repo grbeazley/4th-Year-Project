@@ -1,7 +1,7 @@
 import numpy as np
 from tqdm import tqdm
 from matplotlib import pyplot as plt
-from stochastic_volatility import gen_univ_gamma
+from stochastic_volatility import *
 from pdfs import gamma_pdf
 from plot_utils import *
 # from particle_filter import ParticleFilter
@@ -54,21 +54,21 @@ class ParticleFilterGamma(ParticleFilterBackTrace):
         summand_a = (sqrd_minus_one_prdct - (np.square(self.particle_history[:, :-1]) * self.a)) / self.b
         dl_da = np.dot(np.sum(summand_a, axis=1), final_weights_norm)
 
-        # Update parameter, ensuring it retains stationarity
-        self.a = min(self.a + self.adap_learn_rate * dl_da * self.learn_a, 0.9999)
-
         # Compute the gradient of the log likelihood w.r.t. b
         sqrd_prdct = np.square(self.particle_history[:, 1:] - self.a * self.particle_history[:, :-1])
         sum_b = np.sum(sqrd_prdct - self.b, axis=1) / 2 * (self.b ** 2)
         dl_db = np.dot(sum_b, final_weights_norm)
 
-        # Update parameter b
-        self.b = max(0.0001, self.b + self.adap_learn_rate * dl_db * self.learn_b)
-
         th_exp_term = np.exp(self.particle_history / 2) * self.theta
         summand_c = self.true_obs / (2 * th_exp_term * self.c ** (3 / 2))
         sum_c = np.sum(summand_c - (self.k / (2 * self.c)), axis=1)
         dl_dc = np.dot(sum_c, final_weights_norm)
+
+        # Update parameter, ensuring it retains stationarity
+        self.a = min(self.a + self.adap_learn_rate * dl_da * self.learn_a, 0.9999)
+
+        # Update parameter b
+        self.b = max(0.0001, self.b + self.adap_learn_rate * dl_db * self.learn_b)
 
         # Update parameter c
         self.c = max(0.0001, self.c + self.adap_learn_rate * dl_dc * self.learn_c)
@@ -115,13 +115,13 @@ if __name__ == "__main__":
     kk = 1.3
     thth = 0.5
     
-    M = 2000
+    M = 1000
 
-    N = 750
+    N = 500
 
     test_x, test_y = gen_univ_gamma(M, a=aa, b=bb, c=c_true, k=kk, theta=thth, return_hidden=True)
-    # test_x, test_y = gen_univ_sto_vol(num_data, a=aa, b=bb, c=cc, return_hidden=True)
-    # test_y = np.log(np.abs(test_y))
+    test_x, test_y = gen_univ_sto_vol(M, a=aa, b=bb, c=cc, return_hidden=True)
+    test_y = np.log(np.abs(test_y))
 
     particle_filter = ParticleFilterGamma(test_y,
                                           num_particles=N,
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     # particle_filter.plot_learn_rate()
 
     # part_hist3 = particle_filter.particle_history3
-    # part_hist = particle_filter.particle_history
+    # part_hist = particle_filter.prtcl_hist
     # index_history = particle_filter.index_history
     # plot(part_hist.T)
 
@@ -155,7 +155,7 @@ if __name__ == "__main__":
 
     # plt.plot(main_particle_history)
 
-    # plot(particle_history.T)
+    # plot(prtcl_hist.T)
 
 
 

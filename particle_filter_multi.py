@@ -1,12 +1,9 @@
 import numpy as np
 from tqdm import tqdm
 from matplotlib import pyplot as plt
-from stochastic_volatility import gen_univ_mrkv, gen_univ_sto_vol, gen_univ_gamma, gen_multi_sto_vol
+from stochastic_volatility import *
 from pdfs import gamma_pdf
 from plot_utils import *
-from scipy.special import gamma as gamma_function
-from scipy.special import digamma as gamma_deriv
-
 from utilities import make_stationary
 
 
@@ -37,6 +34,7 @@ class ParticleFilterMulti:
         self.params_history = np.zeros([self.num_params, self.num_iterations + 1])
         self.learn_rate_history = np.zeros(self.num_iterations + 1)
         self.weights_history = np.zeros([self.num_particles, self.num_data + 1])
+        self.likelihood_history = np.zeros([1, num_iterations])
 
         if 'true_hidden' in kwargs:
             self.true_hidden = kwargs['true_hidden']
@@ -63,11 +61,10 @@ class ParticleFilterMulti:
 
     def _get_initial_sample(self):
         return np.random.randn(self.p, self.num_particles)
-    # @profile
 
     def observation(self, x, y):
-        eps_inv = 1 / (np.exp(x) * self.beta[:, np.newaxis])
-        log_obs = 0.5*np.log(np.prod(eps_inv, axis=0)) - (0.5 * np.dot((y**2), eps_inv))
+        sigma = np.exp(x/2) * np.sqrt(self.beta[:, np.newaxis])
+        log_obs = -np.log(np.prod(sigma, axis=0)) - (np.dot(np.square(y), 1/np.square(sigma)))/2
         return np.exp(log_obs)
 
     def filter_pass(self):
@@ -98,7 +95,7 @@ class ParticleFilterMulti:
             self.prtcl_hist[:, :, i + 1] = Xn_plus_1
 
             # Make the new weights the likelihood of observing the known y for a given Xn hidden state
-            new_particle_weights = self.observation(Xn_plus_1, self.true_obs[:, i + 1])
+            new_particle_weights = np.clip(self.observation(Xn_plus_1, self.true_obs[:, i + 1]), 0, None)
 
             # Store the updated weights in the weights history
             self.weights_history[:, i + 1] = new_particle_weights
@@ -116,6 +113,7 @@ class ParticleFilterMulti:
         else:
             self.params_history = np.zeros([self.num_params, num_iterations + 1])
             self.learn_rate_history = np.zeros(num_iterations + 1)
+            self.likelihood_history = np.zeros([1, num_iterations])
 
         self.params_history[:, 0] = np.concatenate((self.phi.flatten(), self.eta.flatten(), self.beta.flatten()))
         self.learn_rate_history[0] = self.adap_learn_rate
@@ -135,6 +133,7 @@ class ParticleFilterMulti:
             # Store update to parameters
             self.params_history[:, i + 1] = new_params
             self.learn_rate_history[i + 1] = self.adap_learn_rate
+            self.likelihood_history[:, i] = np.sum(np.log(np.sum(self.weights_history, axis=0) / self.num_particles))
 
     def _comp_param_update(self, fwn):
 
@@ -146,23 +145,22 @@ class ParticleFilterMulti:
                         (np.dot(self.phi[i, :], self.prtcl_hist[:, :, 1:].transpose(1, 0, 2))))
                 dl_dphi[i, j] = np.dot(fwn, np.sum(frst - scnd, axis=1))
 
-        self.phi = make_stationary(self.phi + (self.learn_rate * dl_dphi * self.learn_phi))
-
         dl_deta = np.zeros_like(self.eta)
 
         for i in range(self.p):
             mu = np.dot(self.phi[i, :], self.prtcl_hist[:, :, :-1].transpose(1, 0, 2))
             smnd = np.square(self.prtcl_hist[i, :, 1:])/2 - self.prtcl_hist[i, :, 1:]*mu + np.square(mu)/2
 
-            dl_deta[i] = np.dot(fwn, np.sum(smnd/(self.eta[i]**2) - 1/(2*self.eta[i]), axis=1))
+            dl_deta[i] = np.dot(fwn, np.sum(smnd/np.square(self.eta[i]) - 0.5/self.eta[i], axis=1))
 
         self.eta = np.clip(self.eta + (self.learn_rate * dl_deta * self.learn_eta), 0.001, None)
+        self.phi = make_stationary(self.phi + (self.learn_rate * dl_dphi * self.learn_phi))
 
         dl_dbeta = np.zeros_like(self.beta)
         for i in range(self.p):
-            smnd = 0.5 * self.true_obs[i]**2 / np.exp(self.prtcl_hist[i, :, :])
-
-            dl_dbeta[i] = np.dot(fwn, np.sum(smnd/self.beta[i]**2 - 0.5/self.beta[i], axis=1))
+            log_smnd = np.log(np.square(self.true_obs[i, :])) - self.prtcl_hist[i, :, :]
+            smnd = 0.5 * np.exp(log_smnd - 2*np.log(self.beta[i]))
+            dl_dbeta[i] = np.dot(fwn, np.sum(smnd - 0.5/self.beta[i], axis=1))
 
         self.beta = np.clip(self.beta + (self.learn_rate * dl_dbeta * self.learn_beta), 0.001, None)
 
@@ -203,9 +201,19 @@ class ParticleFilterMulti:
         self.learn_eta = new_rates[1]
         self.learn_beta = new_rates[2]
 
+    def plot_likelihood(self, title=""):
+        plt.figure()
+        plt.plot(self.likelihood_history.T)
+        plt.title("Likelihood Evolution In Training for " + str(title))
+
+    def update_num_particles(self, new_number):
+        self.num_particles = new_number
+        self.prtcl_hist = np.zeros([self.p, self.num_particles, self.num_data + 1])
+        self.weights_history = np.zeros([self.num_particles, self.num_data + 1])
+
 
 if __name__ == "__main__":
-    np.random.seed(1)
+    np.random.seed(0)
     num_data = 500
     N = 500
     num_dims = 4
@@ -220,23 +228,24 @@ if __name__ == "__main__":
     #                        [0, 0, 1, 0],
     #                        [0, 0, 0, 1]], dtype=float)
 
-    data_h, data_y = gen_multi_sto_vol(num_data, num_dims, phi=phi, var_latent=1, var_observed=1, return_hidden=True)
+    data_h, data_y = gen_multi_sto_vol(num_data, num_dims, phi=phi, var_latent=1, var_observed=5, return_hidden=True)
 
     pf = ParticleFilterMulti(data_y,
                              num_particles=N,
                              p=num_dims,
-                             a=0.5,
-                             b=1,
-                             c=0.5,
+                             a=0.7,
+                             b=0.9,
+                             c=4,
                              true_hidden=data_h,
                              num_iterations=10,
                              learn_rate=0.1/num_data,
-                             learn_phi=0.5,
+                             learn_phi=1,
                              learn_eta=5,
-                             learn_beta=10,
+                             learn_beta=20,
                              )
 
     # pf.filter_pass()
     pf.calibrate_model()
     pf.plot_params()
+    pf.plot_likelihood()
     # pf.plot_filter_pass()
