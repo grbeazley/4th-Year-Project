@@ -209,7 +209,7 @@ def reverse_moving_average(data, start_values, n=3):
 def make_stationary(matrix):
     for i, row in enumerate(matrix):
         if np.sum(row) >= 1:
-            matrix[i, :] / np.sum(row)
+            matrix[i, :] = row / np.sum(row)
 
     return matrix
 
