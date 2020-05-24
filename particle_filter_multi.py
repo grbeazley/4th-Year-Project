@@ -27,7 +27,7 @@ class ParticleFilterMulti:
                  a=0.95, b=1.0, c=1.0, learn_rate=0.0001, learn_phi=1.0, learn_eta=1.0, learn_beta=1.0, **kwargs):
 
         self.p = p
-        self.num_data = len(true_obs[0,:]) - 1
+        self.num_data = len(true_obs[0, :]) - 1
         self.num_particles = num_particles
         self.num_iterations = num_iterations
 
@@ -211,7 +211,7 @@ class ParticleFilterMulti:
             dl_deta[i] = np.dot(fwn, np.sum(smnd/np.square(self.eta[i]) - 0.5/self.eta[i], axis=1))
 
         self.eta = np.clip(self.eta + (self.learn_rate * dl_deta * self.learn_eta), 0.001, None)
-        self.phi = make_stationary(self.phi + (self.learn_rate * dl_dphi * self.learn_phi))
+        self.phi = self.phi + (self.learn_rate * dl_dphi * self.learn_phi)
 
         dl_dbeta = np.zeros_like(self.beta)
         for i in range(self.p):
@@ -268,6 +268,32 @@ class ParticleFilterMulti:
         self.prtcl_hist = np.zeros([self.p, self.num_particles, self.num_data + 1])
         self.weights_history = np.zeros([self.num_particles, self.num_data + 1])
 
+    def one_predict_hidden(self):
+        final_weights = self.weights_history[:, -1]
+        fwn = final_weights / np.sum(final_weights)
+
+        particle_indexes = np.random.choice(np.arange(self.num_particles), size=self.num_particles, p=fwn)
+        x_prev = self.prtcl_hist[:, particle_indexes, -1]
+        predictions = self.hidden_sample(x_prev)
+
+        return predictions
+
+    def one_step_multi(self, test_obs_data):
+        num_points = np.shape(test_obs_data)[1]
+        predictions = np.zeros([self.p, self.num_particles, num_points])
+
+        self.true_obs = self.true_obs[:, -101:]
+        self.num_data = 100
+
+        for i in tqdm(range(num_points)):
+            predictions[:, :, i] = self.one_predict_hidden()
+            self.true_obs = np.hstack((self.true_obs, test_obs_data[:, i, np.newaxis]))
+            self.num_data += 1
+            self.clear_history()
+            self.filter_pass()
+
+        return predictions
+
 
 if __name__ == "__main__":
     np.random.seed(0)
@@ -276,10 +302,20 @@ if __name__ == "__main__":
     num_dims = 6
     train = 4616
 
-    phi = 0.95 * np.array([[0.7, 0.1, 0.1, 0.1],
-                           [0.1, 0.7, 0.1, 0.1],
-                           [0.1, 0.1, 0.7, 0.1],
-                           [0.1, 0.1, 0.1, 0.7]], dtype=float)
+    # phi = 0.95 * np.array([[0.7, 0.1, 0.1, 0.1],
+    #                        [0.1, 0.7, 0.1, 0.1],
+    #                        [0.1, 0.1, 0.7, 0.1],
+    #                        [0.1, 0.1, 0.1, 0.7]], dtype=float)
+
+    phi = np.array([[0.82, 0.08, -0.02, 0.06, 0.05, 0.06],
+                    [0.18, 0.53, 0.02, -0.01, 0.05, 0.02],
+                    [0.25, 0.18, 0.22, 0.15, -0.01, -0.01],
+                    [0.16, 0.0, -0.02, 0.65, 0.17, 0.05],
+                    [0.17, 0.03, -0.02, 0.11, 0.63, 0.08],
+                    [0.16, 0.0, -0.01, 0.03, 0.12, 0.61]], dtype=float)
+
+    eta = np.array([0.734, 0.268, 0.32, 0.53, 0.57, 0.52])
+    beta = np.array([2, 2, 2, 2, 2, 2])
 
     # phi = 0.95 * np.array([[1, 0, 0, 0],
     #                        [0, 1, 0, 0],
@@ -302,7 +338,7 @@ if __name__ == "__main__":
                              b=0.9,
                              c=2,
                              # true_hidden=data_h,
-                             num_iterations=20,
+                             num_iterations=2,
                              learn_rate=0.1/num_data,
                              learn_phi=1,
                              learn_eta=5,
@@ -312,8 +348,9 @@ if __name__ == "__main__":
                              beta=beta,
                              )
 
-    # pf.filter_pass()
-    pf.calibrate_model()
-    pf.plot_params()
-    pf.plot_likelihood()
+    pf.filter_pass()
+    # pf.calibrate_model()
+    # pf.plot_params()
+    # pf.plot_likelihood()
+    predictions = pf.one_step_multi(data_test)
     # pf.plot_filter_pass()
