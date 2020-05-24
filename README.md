@@ -65,23 +65,6 @@ particle_filter.calibrate_model()
 particle_filter.plot_params()
 ```
 
-### Neural Network
-The neural network uses a class `NeuralNet` to contain the creation, training and prediction for a basic 3 layer neural
-network. The network is trained using backpropagation and gradient descent. The activation functions are defined in `utilities.py`.
-For example, to create and train a basic three layer 48-64-1 network:
-```python
-from basic_neural_network import NeuralNet
-
-# Specify the path to the data set
-path = "Data Sets\\Electricity\\UK Elec Hourly - no weekends.csv"
-
-# Create a network class
-network = NeuralNet(path, input_size=48, hidden_size=64, do_sub_sample=False)
-
-# Train the network
-network.train_network(epochs=100)
-```
-
 ### Portfolio Optimisation
 A few functions have been created to assist with portfolio optimisation problems. Functions exist to calculate the 
 exponentially weighted mean, `compute_exp_mean()`, to calculate the current weights, `compute_weights()`,
@@ -107,6 +90,23 @@ for i, day in enumerate(days):
     weights[:, i] = compute_weights(covar, means, 0.25)
 
 total_returns, rolling_variance = comp_return(weights, price_data, days)
+```
+
+### Neural Network
+The neural network uses a class `NeuralNet` to contain the creation, training and prediction for a basic 3 layer neural
+network. The network is trained using backpropagation and gradient descent. The activation functions are defined in `utilities.py`.
+For example, to create and train a basic three layer 48-64-1 network:
+```python
+from basic_neural_network import NeuralNet
+
+# Specify the path to the data set
+path = "Data Sets\\Electricity\\UK Elec Hourly - no weekends.csv"
+
+# Create a network class
+network = NeuralNet(path, input_size=48, hidden_size=64, do_sub_sample=False)
+
+# Train the network
+network.train_network(epochs=100)
 ```
 
 
