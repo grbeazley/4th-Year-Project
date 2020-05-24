@@ -1,10 +1,24 @@
 import numpy as np
 from tqdm import tqdm
 from matplotlib import pyplot as plt
+
+from data_gen import load_port
 from stochastic_volatility import *
 from pdfs import gamma_pdf
 from plot_utils import *
-from utilities import make_stationary
+from utilities import make_stationary, normalise
+
+
+def trace_by_idx_multi(start, stop, start_row, particle_history, index_history):
+    # Start is index to start from (large number)
+    # Stop is index to stop at (small number)
+    traced_history = np.zeros([particle_history.shape[0], start - stop + 1])
+    propagate_idx = start_row
+    for idx in range(stop, start + 1):
+        traced_history[:, start - idx] = particle_history[:, propagate_idx, start + stop - idx]
+        propagate_idx = index_history[propagate_idx, start + stop - idx]
+
+    return traced_history
 
 
 class ParticleFilterMulti:
@@ -50,7 +64,11 @@ class ParticleFilterMulti:
             self.do_adaptive_learn = False
             self.alpha = 0
         if 'phi' in kwargs:
-            self.phi = phi
+            self.phi = kwargs['phi']
+        if 'eta' in kwargs:
+            self.eta = kwargs['eta']
+        if 'beta' in kwargs:
+            self.beta = kwargs['beta']
 
         self.adap_learn_rate = self.learn_rate
 
@@ -74,8 +92,14 @@ class ParticleFilterMulti:
         weights = initial_weights / np.sum(initial_weights)
 
         self.prtcl_hist[:, :, 0] = initial_sample
+
+        part_hist_mix = np.zeros_like(self.prtcl_hist)
+        part_hist_mix[:, :, 0] = initial_sample
+
         self.weights_history[:, 0] = weights
         self.estimate_history[:, 0] = np.dot(weights, self.prtcl_hist[:, :, 0].T)
+
+        idx_hist = np.zeros([self.num_particles, self.num_data + 1], dtype=int)
 
         particle_range = np.arange(self.num_particles)
 
@@ -83,16 +107,17 @@ class ParticleFilterMulti:
             # Choose which particles to continue with using their weights
             particle_indexes = np.random.choice(particle_range, size=self.num_particles, p=weights)
             sorted_indexes = np.sort(particle_indexes)
-            Xn = self.prtcl_hist[:, sorted_indexes, i]
+            Xn = part_hist_mix[:, sorted_indexes, i]
 
             # Update the previous state history to be that of the chosen particles
-            self.prtcl_hist[:, :, :i + 1] = self.prtcl_hist[:, sorted_indexes, :i + 1]
+            # self.prtcl_hist[:, :, :i + 1] = self.prtcl_hist[:, sorted_indexes, :i + 1]
+            idx_hist[:, i + 1] = sorted_indexes
 
             # Advance the hidden state by one time step
             Xn_plus_1 = self.hidden_sample(Xn)
 
             # Store the new state in the process history
-            self.prtcl_hist[:, :, i + 1] = Xn_plus_1
+            part_hist_mix[:, :, i + 1] = Xn_plus_1
 
             # Make the new weights the likelihood of observing the known y for a given Xn hidden state
             new_particle_weights = np.clip(self.observation(Xn_plus_1, self.true_obs[:, i + 1]), 0, None)
@@ -104,7 +129,39 @@ class ParticleFilterMulti:
             weights = new_particle_weights / np.sum(new_particle_weights)
 
             # Update the expectation for the best guess
-            self.estimate_history[:, i + 1] = np.dot(weights, self.prtcl_hist[:, :, i + 1].T)
+            self.estimate_history[:, i + 1] = np.dot(weights, part_hist_mix[:, :, i + 1].T)
+
+        # Find the dominant particle trajectory
+        idx_to_prop = np.arange(self.num_particles)
+        idx_stop = None
+        for idx in range(self.num_data + 1):
+
+            idx_to_prop = np.unique(idx_hist[:, self.num_data - idx][idx_to_prop])
+            if len(idx_to_prop) == 1:
+                # Have found final particle so stop
+                idx_stop = idx + 1
+                idx_to_prop = idx_to_prop[0]
+                break
+
+        if idx_stop is None:
+            # No time saved just iterate through for each one
+            print("No Dominant Particle Found")
+            particle_history = np.zeros_like(part_hist_mix)
+            for i in range(self.num_particles):
+                particle_history[:, i, :] = \
+                    trace_by_idx_multi(self.num_data, 0, i, part_hist_mix, idx_hist)
+        else:
+            # Found dominant particle, starting at idx_stop
+            particle_history = np.zeros_like(part_hist_mix)
+            main_particle_history = trace_by_idx_multi(self.num_data - idx_stop, 0, idx_to_prop,
+                                                       part_hist_mix, idx_hist)
+            particle_history[:, :, :(self.num_data - idx_stop) + 1] = main_particle_history[:, None, :]
+
+            for i in range(self.num_particles):
+                particle_history[:, i, (self.num_data - idx_stop) + 1:] \
+                    = trace_by_idx_multi(self.num_data, self.num_data - idx_stop + 1, i, part_hist_mix, idx_hist)
+
+        self.prtcl_hist = particle_history
 
     def calibrate_model(self, num_iterations=None):
         # Run the filter pass numerous times to optimise a,b,c,d
@@ -214,9 +271,10 @@ class ParticleFilterMulti:
 
 if __name__ == "__main__":
     np.random.seed(0)
-    num_data = 500
-    N = 500
-    num_dims = 4
+    num_data = 5000
+    N = 1000
+    num_dims = 6
+    train = 4616
 
     phi = 0.95 * np.array([[0.7, 0.1, 0.1, 0.1],
                            [0.1, 0.7, 0.1, 0.1],
@@ -228,20 +286,30 @@ if __name__ == "__main__":
     #                        [0, 0, 1, 0],
     #                        [0, 0, 0, 1]], dtype=float)
 
-    data_h, data_y = gen_multi_sto_vol(num_data, num_dims, phi=phi, var_latent=1, var_observed=5, return_hidden=True)
+    # data_h, data_y = gen_multi_sto_vol(num_data, num_dims, phi=phi, var_latent=1, var_observed=5, return_hidden=True)
 
-    pf = ParticleFilterMulti(data_y,
+    data_y, dates = load_port(False)
+
+    data_y_norm, y_means, y_stds = normalise(data_y, return_params=True)
+    # data_y_norm = data_y
+    data_train = data_y_norm[:, :train]
+    data_test = data_y_norm[:, train:]
+
+    pf = ParticleFilterMulti(data_train,
                              num_particles=N,
                              p=num_dims,
                              a=0.7,
                              b=0.9,
-                             c=4,
-                             true_hidden=data_h,
-                             num_iterations=10,
+                             c=2,
+                             # true_hidden=data_h,
+                             num_iterations=20,
                              learn_rate=0.1/num_data,
                              learn_phi=1,
                              learn_eta=5,
-                             learn_beta=20,
+                             learn_beta=0,
+                             phi=phi,
+                             eta=eta,
+                             beta=beta,
                              )
 
     # pf.filter_pass()
