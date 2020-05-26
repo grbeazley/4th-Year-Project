@@ -1,10 +1,8 @@
 import numpy as np
 from tqdm import tqdm
 from matplotlib import pyplot as plt
-
 from data_gen import load_port
 from stochastic_volatility import *
-from pdfs import gamma_pdf
 from plot_utils import *
 from utilities import make_stationary, normalise
 
@@ -193,7 +191,7 @@ class ParticleFilterMulti:
             self.likelihood_history[:, i] = np.sum(np.log(np.sum(self.weights_history, axis=0) / self.num_particles))
 
     def _comp_param_update(self, fwn):
-
+        # Calculate the gradient with respect to the parameters and update them
         dl_dphi = np.zeros_like(self.phi)
         for i in range(self.p):
             for j in range(self.p):

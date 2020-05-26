@@ -117,11 +117,11 @@ if __name__ == "__main__":
     
     M = 1000
 
-    N = 500
+    N = 1000
 
     test_x, test_y = gen_univ_gamma(M, a=aa, b=bb, c=c_true, k=kk, theta=thth, return_hidden=True)
-    test_x, test_y = gen_univ_sto_vol(M, a=aa, b=bb, c=cc, return_hidden=True)
-    test_y = np.log(np.abs(test_y))
+    # test_x, test_y = gen_univ_sto_vol(M, a=aa, b=bb, c=cc, return_hidden=True)
+    # test_y = np.log(np.abs(test_y))
 
     particle_filter = ParticleFilterGamma(test_y,
                                           num_particles=N,
@@ -131,7 +131,7 @@ if __name__ == "__main__":
                                           k=kk,
                                           theta=thth,
                                           true_hidden=test_x,
-                                          num_iterations=5,
+                                          num_iterations=2,
                                           learn_rate=0.01/M,
                                           do_adaptive_learn=True
                                           )
