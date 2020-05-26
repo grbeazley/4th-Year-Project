@@ -1,5 +1,5 @@
 # Fitting Models to Financial Time Series
-#### 4th Year Project Code Repository
+#### [4th Year Project Code Repository](https://github.com/grbeazley/4th-Year-Project)
 ## Introduction
 This repository contains all of the code used throughout the project. 
 This includes code which was used as part of the learning and exploration parts of the project. As a result some code will not
@@ -142,3 +142,5 @@ optimisation.
 The file `pdfs.py` contains a number of probability distributions, and plotting tools to assist their visualisation.
 
 The file `utilites.py` contains a number of helper functions which are required across multiple programs.
+
+Github url: https://github.com/grbeazley/4th-Year-Project
