@@ -1,9 +1,0 @@
-# Default ignored files
-/workspace.xml
-
-# Ignore pycache
-__pycache__/
-
-# Ignore idea folder
-.idea/
-
